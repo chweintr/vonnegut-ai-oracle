@@ -106,7 +106,8 @@ def generate_vonnegut_response(user_input, conversation_mode, conversation_histo
     messages.append({"role": "user", "content": user_input})
     
     try:
-        response = openai.ChatCompletion.create(
+        client = openai.OpenAI(api_key=openai.api_key)
+        response = client.chat.completions.create(
             model="gpt-4",
             messages=messages,
             max_tokens=500,
@@ -169,19 +170,30 @@ def main():
     
     .main {
         background-color: #2B1B0A;
-        color: #F4E8D0;
+        color: #F4E8D0 !important;
     }
     
     .stApp {
         background: linear-gradient(180deg, #2B1B0A 0%, #3D2914 100%);
         font-family: 'Courier Prime', monospace;
+        color: #F4E8D0 !important;
+    }
+    
+    /* Ensure all text is light colored */
+    .stApp, .stApp * {
+        color: #F4E8D0 !important;
+    }
+    
+    /* Override Streamlit's default dark text */
+    p, div, span, label, h1, h2, h3, h4, h5, h6 {
+        color: #F4E8D0 !important;
     }
     
     .vonnegut-title {
         font-family: 'Courier Prime', monospace;
         font-size: 3rem;
         font-weight: 700;
-        color: #D2691E;
+        color: #D2691E !important;
         text-align: center;
         margin-bottom: 0.5rem;
         text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
@@ -190,7 +202,7 @@ def main():
     .vonnegut-subtitle {
         font-family: 'Courier Prime', monospace;
         font-size: 1.2rem;
-        color: #CD853F;
+        color: #CD853F !important;
         text-align: center;
         margin-bottom: 2rem;
         font-style: italic;
@@ -203,39 +215,65 @@ def main():
         padding: 1rem;
         margin: 1rem 0;
         font-family: 'Courier Prime', monospace;
+        color: #F4E8D0 !important;
     }
     
     .user-message {
         background-color: #2F4F2F;
         border-color: #228B22;
+        color: #F4E8D0 !important;
     }
     
     .vonnegut-message {
         background-color: #4A3425;
         border-color: #D2691E;
+        color: #F4E8D0 !important;
     }
     
+    /* Sidebar styling */
+    .sidebar .stSelectbox > div > div {
+        background-color: #2B1B0A !important;
+        color: #F4E8D0 !important;
+    }
+    
+    .sidebar .stMarkdown {
+        color: #F4E8D0 !important;
+    }
+    
+    /* Input fields */
     .stSelectbox > div > div {
-        background-color: #3D2914;
-        color: #F4E8D0;
+        background-color: #3D2914 !important;
+        color: #F4E8D0 !important;
+        border: 1px solid #8B4513 !important;
     }
     
     .stTextInput > div > div > input {
-        background-color: #3D2914;
-        color: #F4E8D0;
-        border: 1px solid #8B4513;
+        background-color: #3D2914 !important;
+        color: #F4E8D0 !important;
+        border: 1px solid #8B4513 !important;
     }
     
+    .stTextInput label {
+        color: #CD853F !important;
+    }
+    
+    /* Buttons */
     .stButton > button {
-        background-color: #D2691E;
-        color: #2B1B0A;
+        background-color: #D2691E !important;
+        color: #2B1B0A !important;
         border: none;
         font-family: 'Courier Prime', monospace;
         font-weight: 700;
     }
     
-    .sidebar .stSelectbox > div > div {
-        background-color: #2B1B0A;
+    .stCheckbox label {
+        color: #F4E8D0 !important;
+    }
+    
+    /* Fix selectbox options */
+    .stSelectbox div[data-baseweb="select"] > div {
+        background-color: #3D2914 !important;
+        color: #F4E8D0 !important;
     }
     </style>
     """, unsafe_allow_html=True)
@@ -319,7 +357,9 @@ def main():
         send_button = st.button("Send", type="primary")
     
     with col2:
-        voice_enabled = st.checkbox("Enable voice synthesis", value=True if ELEVENLABS_API_KEY else False)
+        voice_enabled = st.checkbox("🔊 Enable Vonnegut voice output", value=True if ELEVENLABS_API_KEY else False)
+        if voice_enabled:
+            st.caption("💬 Type your message → Kurt responds with voice")
     
     if send_button and user_input:
         # Add user message to history
