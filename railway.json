@@ -1,0 +1,10 @@
+{
+  "build": {
+    "commands": [
+      "pip install -r requirements.txt"
+    ]
+  },
+  "deploy": {
+    "startCommand": "streamlit run vonnegut_ai_app.py --server.port $PORT --server.address 0.0.0.0"
+  }
+}
