@@ -1,0 +1,47 @@
+Kurt Vonnegut Books Copyright Status & Corpus Collection Limitations
+
+COPYRIGHT STATUS SUMMARY:
+❌ MAJOR NOVELS - NOT AVAILABLE FOR FULL TEXT EXTRACTION
+- Slaughterhouse-Five (1969) - Under copyright until 2077
+- Cat's Cradle (1963) - Under copyright until 2077  
+- Breakfast of Champions (1973) - Under copyright until 2077
+- Mother Night (1961) - Under copyright until 2077
+- Player Piano (1952) - Under copyright until 2077
+- Sirens of Titan (1959) - Under copyright until 2077
+- Jailbird (1979) - Under copyright until 2077
+- All other major works - Protected until 70 years after death (2077)
+
+✅ LIMITED PUBLIC DOMAIN ACCESS:
+- "2BR02B" (available on Project Gutenberg) - ✓ Already collected
+- "The Big Trip Up Yonder" - ✓ Already collected  
+- Very few early short stories may be available
+
+FAIR USE LIMITATIONS FOR CORPUS BUILDING:
+- Academic quotes: 200-300 words per work maximum
+- Short excerpts for analysis/criticism: Acceptable
+- Extensive text extraction: Requires permission
+- Full book reproduction: Copyright infringement
+
+PRACTICAL IMPLICATIONS FOR AI CORPUS:
+❌ Cannot use complete novels as training material
+❌ Cannot extract large passages or chapters  
+✅ Can use brief quotes with attribution
+✅ Can focus on interviews, speeches, public appearances
+✅ Can use biographical and critical analysis containing quotes
+
+RECOMMENDED CORPUS STRATEGY:
+1. Maximize public domain materials (very limited)
+2. Focus on interviews, speeches, lectures (substantial content available)
+3. Use fair use quotes sparingly for voice pattern examples
+4. Prioritize Archive.org audio transcriptions 
+5. Emphasize non-fiction writing and public appearances
+
+CONCLUSION:
+Access to Vonnegut's complete book texts is severely limited by copyright law. The corpus must be built primarily from:
+- Public speeches and interviews
+- Commencement addresses  
+- Audio/video transcriptions
+- Academic fair use excerpts
+- Public domain short stories (minimal)
+
+This explains why interviews and speeches are the high-value targets for authentic voice pattern collection.

@@ -1,0 +1,32 @@
+Vonnegut Interview Sources Collection Summary
+
+ATTEMPTED YOUTUBE TRANSCRIPT EXTRACTION:
+- Dick Cavett Show (1989): Video exists but no auto-captions available
+- Technical issue: YouTube transcript API not finding captions for older videos
+
+ALTERNATIVE COLLECTION STRATEGY:
+
+1. MANUAL TRANSCRIPTION TARGETS:
+   - Dick Cavett Show 1989 interview (25 minutes) - High priority
+   - Case Western Reserve 2004 lecture - Available in university archives
+   - Charlie Rose 1999 interview - Available on Charlie Rose website
+
+2. AUDIO SOURCES FOR TRANSCRIPTION:
+   - Fresh Air NPR 1986 interview with Terry Gross
+   - Various C-SPAN archived speeches
+   - Library of Congress 1971 lecture
+
+3. COMPLETED TEXT SOURCES:
+   ✓ Project Gutenberg public domain stories (2 files)
+   ✓ Commencement speech excerpts and summaries (4 speeches)
+   ✓ Source list compiled for future manual transcription
+
+NEXT STEPS:
+- Focus on Archive.org audio materials that may have existing transcripts
+- Search for academic papers that quote extensive Vonnegut interviews
+- Look for fan sites and literary databases with transcribed content
+
+CORPUS PROGRESS:
+Current estimated size: ~50KB of authentic Vonnegut text
+Target: 15-20MB total corpus
+Status: Early collection phase, need to scale up significantly

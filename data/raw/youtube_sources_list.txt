@@ -1,0 +1,45 @@
+Kurt Vonnegut YouTube Video Sources for Transcript Extraction
+
+HIGH-PRIORITY VIDEO INTERVIEWS:
+
+1. Dick Cavett Show Interview (1989)
+   - Date: October 25, 1989
+   - URL: https://www.youtube.com/watch?v=FslqWztRS8M&t=199s
+   - Content: Vonnegut discusses Slaughterhouse-Five and his writing
+   - Status: Ready for transcript extraction
+
+2. Charlie Rose Interview (1999) 
+   - Date: September 8, 1999
+   - Available on: Charlie Rose website/archive
+   - Content: Discussion of short fiction, writing process, distrust of computers
+   - Status: May need alternative source for YouTube version
+
+3. Case Western Reserve University Lecture (2004)
+   - Date: February 4, 2004
+   - Location: Cleveland, Ohio - Severance Hall
+   - Content: "Shapes of Stories" theory, Uncle Alex story, happiness advice
+   - Archive ID: http://hdl.handle.net/2186/ksl:casetv-6225
+   - Status: Available in university digital archives
+
+4. Fresh Air NPR Interview (1986)
+   - Date: May 13, 1986 (rebroadcast April 11, 2007)
+   - Host: Terry Gross
+   - Content: Writing, censorship, WWII POW experience, Dresden bombing
+   - Status: Audio available through NPR archives
+
+ADDITIONAL SOURCES TO INVESTIGATE:
+- Library of Congress lecture (February 1, 1971)
+- Various university commencement speeches on C-SPAN
+- Literary festival appearances
+- Book tour interviews from 1990s-2000s
+
+EXTRACTION TOOLS NEEDED:
+- youtube-transcript-api (Python library)
+- Manual transcription for key segments where auto-captions unavailable
+- Audio-to-text conversion for non-YouTube sources
+
+PRIORITY ORDER:
+1. Dick Cavett Show (1989) - Direct YouTube access
+2. Case Western lecture (2004) - University archives
+3. Charlie Rose (1999) - Official website
+4. Fresh Air NPR (1986) - Audio archives
