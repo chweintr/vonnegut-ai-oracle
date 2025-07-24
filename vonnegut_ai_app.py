@@ -106,7 +106,7 @@ def generate_vonnegut_response(user_input, conversation_mode, conversation_histo
     messages.append({"role": "user", "content": user_input})
     
     try:
-        client = openai.OpenAI(api_key=openai.api_key)
+        client = openai.OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
         response = client.chat.completions.create(
             model="gpt-4",
             messages=messages,
@@ -176,17 +176,31 @@ def main():
     .stApp {
         background: linear-gradient(180deg, #2B1B0A 0%, #3D2914 100%);
         font-family: 'Courier Prime', monospace;
+    }
+    
+    /* Main content area - light text on dark background */
+    .main .stMarkdown, .main .stText, .main p, .main div, .main span, .main label {
         color: #F4E8D0 !important;
     }
     
-    /* Ensure all text is light colored */
-    .stApp, .stApp * {
-        color: #F4E8D0 !important;
+    /* Sidebar styling - dark text on light background */
+    section[data-testid="stSidebar"] {
+        background-color: #f0f2f6 !important;
     }
     
-    /* Override Streamlit's default dark text */
-    p, div, span, label, h1, h2, h3, h4, h5, h6 {
-        color: #F4E8D0 !important;
+    section[data-testid="stSidebar"] .stMarkdown, 
+    section[data-testid="stSidebar"] p, 
+    section[data-testid="stSidebar"] div, 
+    section[data-testid="stSidebar"] span, 
+    section[data-testid="stSidebar"] label,
+    section[data-testid="stSidebar"] h1,
+    section[data-testid="stSidebar"] h2,
+    section[data-testid="stSidebar"] h3 {
+        color: #262730 !important;
+    }
+    
+    section[data-testid="stSidebar"] .stSelectbox label {
+        color: #262730 !important;
     }
     
     .vonnegut-title {
@@ -230,31 +244,27 @@ def main():
         color: #F4E8D0 !important;
     }
     
-    /* Sidebar styling */
-    .sidebar .stSelectbox > div > div {
-        background-color: #2B1B0A !important;
-        color: #F4E8D0 !important;
-    }
-    
-    .sidebar .stMarkdown {
-        color: #F4E8D0 !important;
-    }
-    
-    /* Input fields */
-    .stSelectbox > div > div {
-        background-color: #3D2914 !important;
-        color: #F4E8D0 !important;
-        border: 1px solid #8B4513 !important;
-    }
-    
+    /* Input fields in main area */
     .stTextInput > div > div > input {
         background-color: #3D2914 !important;
         color: #F4E8D0 !important;
         border: 1px solid #8B4513 !important;
     }
     
+    .stTextInput > div > div > input::placeholder {
+        color: #CD853F !important;
+        opacity: 0.8;
+    }
+    
     .stTextInput label {
         color: #CD853F !important;
+    }
+    
+    /* Selectbox in main area */
+    .stSelectbox > div > div {
+        background-color: #3D2914 !important;
+        color: #F4E8D0 !important;
+        border: 1px solid #8B4513 !important;
     }
     
     /* Buttons */
@@ -270,10 +280,9 @@ def main():
         color: #F4E8D0 !important;
     }
     
-    /* Fix selectbox options */
-    .stSelectbox div[data-baseweb="select"] > div {
-        background-color: #3D2914 !important;
-        color: #F4E8D0 !important;
+    /* Caption text */
+    .stCaption {
+        color: #CD853F !important;
     }
     </style>
     """, unsafe_allow_html=True)
