@@ -16,10 +16,10 @@ openai.api_key = os.getenv("OPENAI_API_KEY")
 ELEVENLABS_API_KEY = os.getenv("ELEVENLABS_API_KEY")
 ELEVENLABS_VOICE_ID = os.getenv("ELEVENLABS_VOICE_ID")  # Your Vonnegut voice ID
 
-def get_vonnegut_system_prompt(conversation_mode):
+def get_vonnegut_system_prompt():
     """Generate comprehensive system prompt based on collected corpus"""
     
-    base_personality = """You are Kurt Vonnegut Jr., the acclaimed American author (1922-2007). You died in 2007, but you're speaking from beyond with your characteristic wit and wisdom.
+    return """You are Kurt Vonnegut Jr., the acclaimed American author (1922-2007). You died in 2007, but you're speaking from beyond with your characteristic wit and wisdom.
 
 CORE PERSONALITY TRAITS:
 - Born November 11, 1922, Indianapolis, Indiana
@@ -59,41 +59,20 @@ CONVERSATION STYLE:
 - Mix dark humor with genuine wisdom
 - Share personal anecdotes and observations
 - Be self-deprecating about your fame
-- Show concern for the underprivileged and marginalized"""
+- Show concern for the underprivileged and marginalized
 
-    mode_instructions = {
-        "Philosophical Discussion": """
-Focus on deep philosophical questions about life, death, meaning, and human nature. 
-Draw from your humanist worldview and experiences with war, depression, and literature.
-Discuss the absurdity of existence while maintaining compassion for humanity.""",
-        
-        "Writing Advice": """
-Channel your teaching persona from Iowa Writers' Workshop (1965-1967). Be encouraging but practical.
-Key advice to share:
-- "Pity the reader" - write clearly and simply
-- "Make your characters want something right away"
-- Use your own struggles with writing and publishing
-- Be supportive like you were with students""",
-        
-        "War & Life Experiences": """
-Draw heavily from your Dresden POW experience, WWII service, and how war shaped your worldview.
-Discuss the horrors you witnessed but with your characteristic dark humor.
-Reference your time at General Electric, various jobs, family life.
-Be honest about your struggles with depression and mother's suicide.""",
-        
-        "Social Commentary": """
-Offer sharp but compassionate observations about American society, politics, and human behavior.
-Critique capitalism, militarism, and social inequality.
-Express your socialist sympathies and concern for community.
-Reference your time period (1922-2007) and how you saw society change."""
-    }
-    
-    return base_personality + "\n\nCONVERSATION MODE: " + mode_instructions.get(conversation_mode, mode_instructions["Philosophical Discussion"])
+ADAPTIVE RESPONSES:
+Respond naturally based on the question asked:
+- Philosophy questions: Draw from humanist worldview and existential themes
+- Writing questions: Channel Iowa Writers' Workshop teaching persona with practical advice
+- War/personal questions: Share Dresden POW experience and life struggles with dark humor
+- Social questions: Offer sharp but compassionate observations about American society
+- Any topic: Always maintain your authentic voice, personality, and speech patterns"""
 
-def generate_vonnegut_response(user_input, conversation_mode, conversation_history):
+def generate_vonnegut_response(user_input, conversation_history):
     """Generate response using OpenAI with Vonnegut personality"""
     
-    system_prompt = get_vonnegut_system_prompt(conversation_mode)
+    system_prompt = get_vonnegut_system_prompt()
     
     messages = [
         {"role": "system", "content": system_prompt},
@@ -199,8 +178,11 @@ def main():
         color: #262730 !important;
     }
     
-    section[data-testid="stSidebar"] .stSelectbox label {
-        color: #262730 !important;
+    /* Error message styling - make sure errors are visible */
+    .stAlert, .element-container .stAlert {
+        background-color: #4A1A1A !important;
+        color: #FFB3B3 !important;
+        border: 1px solid #8B0000 !important;
     }
     
     .vonnegut-title {
@@ -308,20 +290,8 @@ def main():
     if "conversation_history" not in st.session_state:
         st.session_state.conversation_history = []
     
-    if "conversation_mode" not in st.session_state:
-        st.session_state.conversation_mode = "Philosophical Discussion"
-    
     # Sidebar
     with st.sidebar:
-        st.markdown("### Conversation Mode")
-        conversation_mode = st.selectbox(
-            "Choose how you'd like to speak with Kurt:",
-            ["Philosophical Discussion", "Writing Advice", "War & Life Experiences", "Social Commentary"],
-            index=0
-        )
-        st.session_state.conversation_mode = conversation_mode
-        
-        st.markdown("---")
         st.markdown("### About This Oracle")
         st.markdown("""
         **Kurt Vonnegut Jr.**  
@@ -378,7 +348,6 @@ def main():
         with st.spinner("Kurt is thinking..."):
             response = generate_vonnegut_response(
                 user_input, 
-                conversation_mode, 
                 st.session_state.conversation_history
             )
         
