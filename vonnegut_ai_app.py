@@ -396,22 +396,6 @@ def main():
     # User input
     user_input = st.text_input("Ask Kurt anything:", placeholder="What did you learn from your Dresden experience?")
     
-    # Sample prompts
-    st.markdown("**Try asking Kurt about:**")
-    col_a, col_b, col_c = st.columns(3)
-    with col_a:
-        if st.button("Dresden bombing"):
-            user_input = "Tell me about your experience during the Dresden bombing"
-            st.rerun()
-    with col_b:
-        if st.button("Slaughterhouse-Five"):
-            user_input = "How did you come to write Slaughterhouse-Five?"
-            st.rerun()
-    with col_c:
-        if st.button("So it goes"):
-            user_input = "What does 'So it goes' mean to you?"
-            st.rerun()
-    
     col1, col2 = st.columns([1, 4])
     
     with col1:
