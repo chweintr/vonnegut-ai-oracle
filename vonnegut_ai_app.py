@@ -160,43 +160,46 @@ def main():
     <style>
     @import url('https://fonts.googleapis.com/css2?family=Courier+Prime:wght@400;700&display=swap');
     
-    /* Video Background */
+    /* Video Background - NEGATIVE z-index puts it behind everything */
     .video-background {
         position: fixed;
         top: 0;
         left: 0;
-        width: 150%;
-        height: 150%;
-        z-index: -1;
-        object-fit: cover;
+        width: 100vw;
+        height: 100vh;
+        z-index: -1;          /* NEGATIVE - BEHIND EVERYTHING */
+        overflow: hidden;
         opacity: 0.3;
         filter: sepia(60%) hue-rotate(20deg) saturate(0.7) brightness(1.1) contrast(0.7);
         pointer-events: none;
     }
     
-    .main {
-        position: relative;
-        z-index: 100 !important;
-        background-color: rgba(43, 27, 10, 0.3);
-        color: #F4E8D0 !important;
-    }
-    
-    .stApp {
-        position: relative;
-        z-index: 100 !important;
+    /* Force all Streamlit content above video */
+    .stApp > div, .main, .block-container {
+        position: relative !important;
+        z-index: 50 !important;    /* POSITIVE - ABOVE VIDEO */
         background: rgba(43, 27, 10, 0.1);
         font-family: 'Courier Prime', monospace;
     }
     
-    /* Ensure all Streamlit elements are above video */
-    div[data-testid="stVerticalBlock"] {
-        z-index: 200 !important;
-        position: relative;
+    /* Response boxes above video */
+    .stMarkdown, .stColumns, .element-container {
+        position: relative !important;
+        z-index: 55 !important;    /* ABOVE VIDEO */
     }
     
-    div[data-testid="stForm"] {
-        z-index: 200 !important;
-        position: relative;
+    /* Input fields highest priority */
+    .stTextInput {
+        position: relative !important;
+        z-index: 60 !important;    /* HIGHER - ABOVE EVERYTHING */
+    }
+    
+    /* Sidebar above video */
+    section[data-testid="stSidebar"] {
+        position: relative !important;
+        z-index: 70 !important;    /* HIGHEST - ABOVE EVERYTHING */
+        background: rgba(240, 242, 246, 0.9) !important;
+        backdrop-filter: blur(10px);
     }
     
     /* Main content area - light text on dark background */
@@ -319,19 +322,8 @@ def main():
     
     <!-- Video Background -->
     <iframe 
+        class="video-background"
         src="https://www.youtube.com/embed/Rx1axzijDxY?autoplay=1&mute=1&loop=1&playlist=Rx1axzijDxY&controls=0&showinfo=0&rel=0&iv_load_policy=3&modestbranding=1&playsinline=1&playback_rate=0.75"
-        style="
-            position: fixed;
-            top: -25%;
-            left: -25%;
-            width: 150%;
-            height: 150%;
-            z-index: -999 !important;
-            border: none;
-            pointer-events: none;
-            opacity: 0.2;
-            filter: sepia(60%) hue-rotate(20deg) saturate(0.7) brightness(1.1) contrast(0.7);
-        "
         allow="autoplay; encrypted-media"
         allowfullscreen>
     </iframe>
