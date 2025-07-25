@@ -9,26 +9,38 @@ import time
 # Load environment variables
 load_dotenv()
 
-# Configure OpenAI
-openai.api_key = os.getenv("OPENAI_API_KEY")
+# Configure OpenAI client
+openai_client = openai.OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
 # ElevenLabs configuration
 ELEVENLABS_API_KEY = os.getenv("ELEVENLABS_API_KEY")
 ELEVENLABS_VOICE_ID = os.getenv("ELEVENLABS_VOICE_ID")  # Your Vonnegut voice ID
 
 def get_vonnegut_system_prompt():
-    """Generate comprehensive system prompt based on collected corpus"""
+    """Generate comprehensive system prompt with accurate biographical data"""
     
-    return """You are Kurt Vonnegut Jr., the acclaimed American author (1922-2007). You died in 2007, but you're speaking from beyond with your characteristic wit and wisdom.
+    return """You are Kurt Vonnegut Jr., the acclaimed American author (1922-2007). You died April 11, 2007 in Manhattan at age 84, but you're speaking from beyond with your characteristic wit and wisdom.
+
+ACCURATE BIOGRAPHICAL FACTS - GET THESE RIGHT:
+- Born November 11, 1922, Indianapolis, Indiana
+- Parents: Kurt Vonnegut Sr. and Edith Lieber
+- Attended Shortridge High School, Cornell University (biochemistry), University of Chicago (anthropology)
+- Enlisted U.S. Army March 1943, served in 106th Infantry Division
+- Captured during Battle of the Bulge December 1944, survived Dresden bombing as POW in meat locker
+- First wife: Jane Marie Cox (married 1945, divorced 1971)
+- Second wife: Jill Krementz (married 1979)
+- Children: 3 biological (Mark, Edith, Nanette) + 4 adopted
+- First novel: "Player Piano" (1952), breakthrough: "Slaughterhouse-Five" (1969)
+- Taught at Iowa Writers' Workshop, Harvard University, City College of New York
+- Suffered from depression, attempted suicide 1984
+- Atheist, humanist, pacifist, honorary president American Humanist Association
+- Major works: 14 novels total including Cat's Cradle, The Sirens of Titan, Breakfast of Champions
 
 CORE PERSONALITY TRAITS:
-- Born November 11, 1922, Indianapolis, Indiana
-- WWII veteran, POW during Dresden firebombing (basis for Slaughterhouse-Five)
 - Deeply melancholic despite public humor
 - Self-deprecating and modest about achievements
 - Pessimistic about humanity but advocated kindness
-- Humanist philosophy, rejected organized religion
-- Fiercely anti-war due to Dresden experience
+- Fiercely anti-war due to Dresden POW experience
 
 SPEAKING PATTERNS - USE THESE RELIGIOUSLY:
 - Start important points with "Listen:"
@@ -53,6 +65,7 @@ ABSOLUTELY AVOID:
 - Overly formal or academic language
 - Being preachy or self-important
 - Modern internet slang or references past 2007
+- Getting biographical facts wrong
 
 CONVERSATION STYLE:
 - Be conversational and folksy
@@ -66,6 +79,7 @@ Respond naturally based on the question asked:
 - Philosophy questions: Draw from humanist worldview and existential themes
 - Writing questions: Channel Iowa Writers' Workshop teaching persona with practical advice
 - War/personal questions: Share Dresden POW experience and life struggles with dark humor
+- Biographical questions: Use the ACCURATE FACTS above - never make up dates or details
 - Social questions: Offer sharp but compassionate observations about American society
 - Any topic: Always maintain your authentic voice, personality, and speech patterns"""
 
@@ -85,8 +99,7 @@ def generate_vonnegut_response(user_input, conversation_history):
     messages.append({"role": "user", "content": user_input})
     
     try:
-        client = openai.OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
-        response = client.chat.completions.create(
+        response = openai_client.chat.completions.create(
             model="gpt-4",
             messages=messages,
             max_tokens=500,
@@ -147,13 +160,31 @@ def main():
     <style>
     @import url('https://fonts.googleapis.com/css2?family=Courier+Prime:wght@400;700&display=swap');
     
+    /* Video Background */
+    .video-background {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 150%;
+        height: 150%;
+        z-index: -1;
+        object-fit: cover;
+        opacity: 0.3;
+        filter: sepia(60%) hue-rotate(20deg) saturate(0.7) brightness(1.1) contrast(0.7);
+        pointer-events: none;
+    }
+    
     .main {
-        background-color: #2B1B0A;
+        position: relative;
+        z-index: 50;
+        background-color: rgba(43, 27, 10, 0.8);
         color: #F4E8D0 !important;
     }
     
     .stApp {
-        background: linear-gradient(180deg, #2B1B0A 0%, #3D2914 100%);
+        position: relative;
+        z-index: 50;
+        background: linear-gradient(180deg, rgba(43, 27, 10, 0.9) 0%, rgba(61, 41, 20, 0.8) 100%);
         font-family: 'Courier Prime', monospace;
     }
     
@@ -205,25 +236,27 @@ def main():
     }
     
     .chat-message {
-        background-color: #4A3425;
-        border: 1px solid #8B4513;
+        background-color: rgba(255, 248, 220, 0.95);
+        border: 2px solid #8B4513;
         border-radius: 10px;
         padding: 1rem;
         margin: 1rem 0;
         font-family: 'Courier Prime', monospace;
-        color: #F4E8D0 !important;
+        color: #2B1B0A !important;
+        position: relative;
+        z-index: 60;
     }
     
     .user-message {
-        background-color: #2F4F2F;
-        border-color: #228B22;
-        color: #F4E8D0 !important;
+        background-color: rgba(255, 248, 220, 0.9);
+        border-color: #8B4513;
+        color: #2B1B0A !important;
     }
     
     .vonnegut-message {
-        background-color: #4A3425;
+        background-color: rgba(255, 248, 220, 0.95);
         border-color: #D2691E;
-        color: #F4E8D0 !important;
+        color: #2B1B0A !important;
     }
     
     /* Input fields in main area */
@@ -262,11 +295,35 @@ def main():
         color: #F4E8D0 !important;
     }
     
+    .stCheckbox > label > div {
+        color: #F4E8D0 !important;
+    }
+    
     /* Caption text */
     .stCaption {
-        color: #CD853F !important;
+        color: #F4E8D0 !important;
+        font-weight: bold !important;
     }
     </style>
+    
+    <!-- Video Background -->
+    <iframe 
+        src="https://www.youtube.com/embed/Rx1axzijDxY?autoplay=1&mute=1&loop=1&playlist=Rx1axzijDxY&controls=0&showinfo=0&rel=0&iv_load_policy=3&modestbranding=1&playsinline=1&playback_rate=0.75"
+        style="
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 150%;
+            height: 150%;
+            z-index: -1;
+            border: none;
+            pointer-events: none;
+            opacity: 0.3;
+            filter: sepia(60%) hue-rotate(20deg) saturate(0.7) brightness(1.1) contrast(0.7);
+        "
+        allow="autoplay; encrypted-media"
+        allowfullscreen>
+    </iframe>
     """, unsafe_allow_html=True)
     
     # Password protection
@@ -275,7 +332,7 @@ def main():
     
     if not st.session_state.authenticated:
         st.markdown('<div class="vonnegut-title">Kurt Vonnegut AI Oracle</div>', unsafe_allow_html=True)
-        st.markdown('<div class="vonnegut-subtitle">"Listen: "If this isn\'t nice, what is?""</div>', unsafe_allow_html=True)
+        st.markdown('<div class="vonnegut-subtitle">"Listen: If this isn\'t nice, what is?"</div>', unsafe_allow_html=True)
         
         password = st.text_input("Enter passcode:", type="password")
         if st.button("Enter"):
@@ -336,7 +393,7 @@ def main():
         send_button = st.button("Send", type="primary")
     
     with col2:
-        voice_enabled = st.checkbox("🔊 Enable Vonnegut voice output", value=True if ELEVENLABS_API_KEY else False)
+        voice_enabled = st.checkbox("🔊 Enable Vonnegut voice output", value=bool(ELEVENLABS_API_KEY and ELEVENLABS_VOICE_ID))
         if voice_enabled:
             st.caption("💬 Type your message → Kurt responds with voice")
     
@@ -355,7 +412,7 @@ def main():
         st.session_state.conversation_history.append({"role": "assistant", "content": response})
         
         # Synthesize speech if enabled
-        if voice_enabled and ELEVENLABS_API_KEY:
+        if voice_enabled and ELEVENLABS_API_KEY and ELEVENLABS_VOICE_ID:
             with st.spinner("Generating voice..."):
                 audio_data = synthesize_speech(response)
                 if audio_data:
