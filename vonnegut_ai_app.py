@@ -176,16 +176,27 @@ def main():
     
     .main {
         position: relative;
-        z-index: 50;
-        background-color: rgba(43, 27, 10, 0.8);
+        z-index: 100 !important;
+        background-color: rgba(43, 27, 10, 0.3);
         color: #F4E8D0 !important;
     }
     
     .stApp {
         position: relative;
-        z-index: 50;
-        background: linear-gradient(180deg, rgba(43, 27, 10, 0.9) 0%, rgba(61, 41, 20, 0.8) 100%);
+        z-index: 100 !important;
+        background: rgba(43, 27, 10, 0.1);
         font-family: 'Courier Prime', monospace;
+    }
+    
+    /* Ensure all Streamlit elements are above video */
+    div[data-testid="stVerticalBlock"] {
+        z-index: 200 !important;
+        position: relative;
+    }
+    
+    div[data-testid="stForm"] {
+        z-index: 200 !important;
+        position: relative;
     }
     
     /* Main content area - light text on dark background */
@@ -311,14 +322,14 @@ def main():
         src="https://www.youtube.com/embed/Rx1axzijDxY?autoplay=1&mute=1&loop=1&playlist=Rx1axzijDxY&controls=0&showinfo=0&rel=0&iv_load_policy=3&modestbranding=1&playsinline=1&playback_rate=0.75"
         style="
             position: fixed;
-            top: 0;
-            left: 0;
+            top: -25%;
+            left: -25%;
             width: 150%;
             height: 150%;
-            z-index: -1;
+            z-index: -999 !important;
             border: none;
             pointer-events: none;
-            opacity: 0.3;
+            opacity: 0.2;
             filter: sepia(60%) hue-rotate(20deg) saturate(0.7) brightness(1.1) contrast(0.7);
         "
         allow="autoplay; encrypted-media"
