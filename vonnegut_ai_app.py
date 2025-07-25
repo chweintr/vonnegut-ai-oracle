@@ -122,7 +122,10 @@ def generate_vonnegut_response(user_input, conversation_history):
 def synthesize_speech(text):
     """Convert text to speech using ElevenLabs API"""
     if not ELEVENLABS_API_KEY or not ELEVENLABS_VOICE_ID:
+        st.error("🚫 Missing ElevenLabs credentials")
         return None
+    
+    st.info(f"🎯 Calling ElevenLabs API with voice ID: {ELEVENLABS_VOICE_ID[:8]}...")
     
     url = f"https://api.elevenlabs.io/v1/text-to-speech/{ELEVENLABS_VOICE_ID}"
     
@@ -133,7 +136,7 @@ def synthesize_speech(text):
     }
     
     data = {
-        "text": text,
+        "text": text[:200] + "..." if len(text) > 200 else text,  # Limit text length for testing
         "model_id": "eleven_monolingual_v1",
         "voice_settings": {
             "stability": 0.5,
@@ -141,15 +144,24 @@ def synthesize_speech(text):
         }
     }
     
+    st.info(f"📝 Sending text ({len(data['text'])} chars): {data['text'][:50]}...")
+    
     try:
-        response = requests.post(url, json=data, headers=headers)
+        response = requests.post(url, json=data, headers=headers, timeout=30)
+        
+        st.info(f"📡 API Response: {response.status_code}")
+        st.info(f"📊 Response headers: {dict(response.headers)}")
+        
         if response.status_code == 200:
-            return response.content
+            audio_content = response.content
+            st.success(f"✅ Audio received: {len(audio_content)} bytes, Content-Type: {response.headers.get('content-type', 'unknown')}")
+            return audio_content
         else:
-            st.error(f"ElevenLabs API error: {response.status_code} - {response.text}")
+            st.error(f"❌ ElevenLabs API error: {response.status_code}")
+            st.error(f"📄 Response text: {response.text}")
             return None
     except Exception as e:
-        st.error(f"Error synthesizing speech: {str(e)}")
+        st.error(f"💥 Exception during API call: {str(e)}")
         return None
 
 def main():
@@ -429,13 +441,39 @@ def main():
         
         # Synthesize speech if enabled
         if voice_enabled and ELEVENLABS_API_KEY and ELEVENLABS_VOICE_ID:
+            st.info("🔄 Starting voice generation...")
             with st.spinner("Generating voice..."):
                 audio_data = synthesize_speech(response)
+                
                 if audio_data:
-                    st.success("🎤 Voice generated! Play the audio below:")
-                    st.audio(audio_data, format="audio/mpeg", start_time=0)
+                    st.success(f"✅ Voice generated! Audio size: {len(audio_data)} bytes")
+                    
+                    # Try multiple audio formats and methods
+                    st.subheader("🔊 Audio Player")
+                    
+                    # Method 1: Standard st.audio
+                    st.audio(audio_data, format="audio/mpeg")
+                    
+                    # Method 2: Try with explicit MIME type
+                    st.audio(audio_data, format="audio/mp3")
+                    
+                    # Method 3: HTML5 audio element with base64
+                    import base64
+                    audio_base64 = base64.b64encode(audio_data).decode()
+                    audio_html = f"""
+                    <audio controls autoplay>
+                        <source src="data:audio/mpeg;base64,{audio_base64}" type="audio/mpeg">
+                        <source src="data:audio/mp3;base64,{audio_base64}" type="audio/mp3">
+                        Your browser does not support the audio element.
+                    </audio>
+                    """
+                    st.markdown("**HTML5 Audio Player:**", unsafe_allow_html=True)
+                    st.markdown(audio_html, unsafe_allow_html=True)
+                    
+                    st.info("📱 If you don't hear audio, try clicking the play button or check your browser's audio settings!")
+                    
                 else:
-                    st.error("❌ Voice generation failed - check ElevenLabs API keys")
+                    st.error("❌ Voice generation failed - no audio data returned")
         
         st.rerun()
     
