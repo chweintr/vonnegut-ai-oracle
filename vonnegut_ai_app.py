@@ -427,7 +427,7 @@ def main():
     st.markdown("---")
     st.markdown("""
     <div style="text-align: center; color: #CD853F; font-style: italic;">
-    "So it goes." - Built with love for literature and human kindness
+    "So it goes." - Built with love for literature and human kindness - v2.0
     </div>
     """, unsafe_allow_html=True)
 
