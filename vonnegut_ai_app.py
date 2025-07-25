@@ -125,8 +125,6 @@ def synthesize_speech(text):
         st.error("🚫 Missing ElevenLabs credentials")
         return None
     
-    st.info(f"🎯 Calling ElevenLabs API with voice ID: {ELEVENLABS_VOICE_ID[:8]}...")
-    
     url = f"https://api.elevenlabs.io/v1/text-to-speech/{ELEVENLABS_VOICE_ID}"
     
     headers = {
@@ -136,32 +134,24 @@ def synthesize_speech(text):
     }
     
     data = {
-        "text": text[:200] + "..." if len(text) > 200 else text,  # Limit text length for testing
-        "model_id": "eleven_monolingual_v1",
+        "text": text,
+        "model_id": "eleven_monolingual_v1", 
         "voice_settings": {
             "stability": 0.5,
             "similarity_boost": 0.75
         }
     }
     
-    st.info(f"📝 Sending text ({len(data['text'])} chars): {data['text'][:50]}...")
-    
     try:
         response = requests.post(url, json=data, headers=headers, timeout=30)
         
-        st.info(f"📡 API Response: {response.status_code}")
-        st.info(f"📊 Response headers: {dict(response.headers)}")
-        
         if response.status_code == 200:
-            audio_content = response.content
-            st.success(f"✅ Audio received: {len(audio_content)} bytes, Content-Type: {response.headers.get('content-type', 'unknown')}")
-            return audio_content
+            return response.content
         else:
-            st.error(f"❌ ElevenLabs API error: {response.status_code}")
-            st.error(f"📄 Response text: {response.text}")
+            st.error(f"❌ ElevenLabs API error: {response.status_code} - {response.text}")
             return None
     except Exception as e:
-        st.error(f"💥 Exception during API call: {str(e)}")
+        st.error(f"💥 Error calling ElevenLabs: {str(e)}")
         return None
 
 def main():
@@ -448,29 +438,22 @@ def main():
                 if audio_data:
                     st.success(f"✅ Voice generated! Audio size: {len(audio_data)} bytes")
                     
-                    # Try multiple audio formats and methods
-                    st.subheader("🔊 Audio Player")
+                    # Create a clean, prominent audio player
+                    st.markdown("### 🎵 Kurt's Voice")
                     
-                    # Method 1: Standard st.audio
+                    # Use standard Streamlit audio (no autoplay - user must click)
                     st.audio(audio_data, format="audio/mpeg")
                     
-                    # Method 2: Try with explicit MIME type
-                    st.audio(audio_data, format="audio/mp3")
+                    # Add a prominent instruction
+                    st.info("🔊 **Click the play button above to hear Kurt Vonnegut's voice!**")
                     
-                    # Method 3: HTML5 audio element with base64
-                    import base64
-                    audio_base64 = base64.b64encode(audio_data).decode()
-                    audio_html = f"""
-                    <audio controls autoplay>
-                        <source src="data:audio/mpeg;base64,{audio_base64}" type="audio/mpeg">
-                        <source src="data:audio/mp3;base64,{audio_base64}" type="audio/mp3">
-                        Your browser does not support the audio element.
-                    </audio>
-                    """
-                    st.markdown("**HTML5 Audio Player:**", unsafe_allow_html=True)
-                    st.markdown(audio_html, unsafe_allow_html=True)
-                    
-                    st.info("📱 If you don't hear audio, try clicking the play button or check your browser's audio settings!")
+                    # Add download option as backup
+                    st.download_button(
+                        label="💾 Download Audio File",
+                        data=audio_data,
+                        file_name="vonnegut_response.mp3",
+                        mime="audio/mpeg"
+                    )
                     
                 else:
                     st.error("❌ Voice generation failed - no audio data returned")
