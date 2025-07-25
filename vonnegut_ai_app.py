@@ -388,7 +388,7 @@ def main():
             """, unsafe_allow_html=True)
     
     # User input
-    user_input = st.text_input("Ask Kurt anything:", placeholder="What's your take on the meaning of life?")
+    user_input = st.text_input("Ask Kurt anything:", placeholder="What did you learn from your Dresden experience?")
     
     col1, col2 = st.columns([1, 4])
     
@@ -426,8 +426,8 @@ def main():
             with st.spinner("Generating voice..."):
                 audio_data = synthesize_speech(response)
                 if audio_data:
-                    st.audio(audio_data, format="audio/mpeg", autoplay=True)
-                    st.success("🔊 Voice generated successfully!")
+                    st.audio(audio_data, format="audio/mpeg")
+                    st.info("🔊 Click the play button above to hear Kurt's voice!")
                 else:
                     st.error("❌ Voice generation failed - check ElevenLabs API keys")
         
