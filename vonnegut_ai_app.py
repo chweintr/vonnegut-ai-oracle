@@ -140,7 +140,7 @@ def synthesize_speech(text):
         if response.status_code == 200:
             return response.content
         else:
-            st.error(f"ElevenLabs API error: {response.status_code}")
+            st.error(f"ElevenLabs API error: {response.status_code} - {response.text}")
             return None
     except Exception as e:
         st.error(f"Error synthesizing speech: {str(e)}")
@@ -399,6 +399,13 @@ def main():
         voice_enabled = st.checkbox("🔊 Enable Vonnegut voice output", value=bool(ELEVENLABS_API_KEY and ELEVENLABS_VOICE_ID))
         if voice_enabled:
             st.caption("💬 Type your message → Kurt responds with voice")
+        else:
+            if not ELEVENLABS_API_KEY:
+                st.caption("⚠️ ElevenLabs API key missing")
+            elif not ELEVENLABS_VOICE_ID:
+                st.caption("⚠️ ElevenLabs Voice ID missing")
+            else:
+                st.caption("🔇 Voice disabled")
     
     if send_button and user_input:
         # Add user message to history
@@ -419,7 +426,10 @@ def main():
             with st.spinner("Generating voice..."):
                 audio_data = synthesize_speech(response)
                 if audio_data:
-                    st.audio(audio_data, format="audio/mpeg")
+                    st.audio(audio_data, format="audio/mpeg", autoplay=True)
+                    st.success("🔊 Voice generated successfully!")
+                else:
+                    st.error("❌ Voice generation failed - check ElevenLabs API keys")
         
         st.rerun()
     
