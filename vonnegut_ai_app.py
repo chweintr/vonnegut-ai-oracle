@@ -454,7 +454,9 @@ def main():
                 else:
                     st.error("❌ Voice generation failed - no audio data")
         
-        st.rerun()
+        # Only rerun if no voice was generated to avoid wiping audio player
+        if not (voice_enabled and ELEVENLABS_API_KEY and ELEVENLABS_VOICE_ID):
+            st.rerun()
     
     # Footer
     st.markdown("---")
