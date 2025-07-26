@@ -431,32 +431,28 @@ def main():
         
         # Synthesize speech if enabled
         if voice_enabled and ELEVENLABS_API_KEY and ELEVENLABS_VOICE_ID:
-            st.info("🔄 Starting voice generation...")
-            with st.spinner("Generating voice..."):
+            with st.spinner("Generating Kurt's voice..."):
                 audio_data = synthesize_speech(response)
                 
                 if audio_data:
-                    st.success(f"✅ Voice generated! Audio size: {len(audio_data)} bytes")
+                    st.success(f"✅ Audio generated! Size: {len(audio_data)} bytes")
                     
-                    # Create a clean, prominent audio player
-                    st.markdown("### 🎵 Kurt's Voice")
+                    # Try direct audio display
+                    st.markdown("### 🎵 Kurt Vonnegut's Voice")
+                    st.audio(audio_data, format="audio/mpeg", start_time=0)
                     
-                    # Use standard Streamlit audio (no autoplay - user must click)
-                    st.audio(audio_data, format="audio/mpeg")
-                    
-                    # Add a prominent instruction
-                    st.info("🔊 **Click the play button above to hear Kurt Vonnegut's voice!**")
-                    
-                    # Add download option as backup
+                    # Also provide download as backup
                     st.download_button(
-                        label="💾 Download Audio File",
+                        label="💾 Download Audio (if player doesn't work)",
                         data=audio_data,
-                        file_name="vonnegut_response.mp3",
+                        file_name=f"vonnegut_{int(time.time())}.mp3",
                         mime="audio/mpeg"
                     )
                     
+                    st.info("🔊 **Click the play ▶️ button above to hear Kurt's voice!**")
+                    
                 else:
-                    st.error("❌ Voice generation failed - no audio data returned")
+                    st.error("❌ Voice generation failed - no audio data")
         
         st.rerun()
     
