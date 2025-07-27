@@ -418,133 +418,28 @@ def main():
     send_button = False
     
     if conversation_mode == "Audio → Audio":
-        # Audio input mode
+        # Audio input mode - SIMPLIFIED FOR DEBUGGING
         st.markdown("### Audio Conversation Mode")
         
-        # Initialize speech session state
-        if "pending_speech" not in st.session_state:
-            st.session_state.pending_speech = ""
-        if "speech_trigger" not in st.session_state:
-            st.session_state.speech_trigger = 0
+        st.warning("🔧 **Debugging Mode** - Let's test step by step")
         
-        # Single speech recognition interface
-        st.info("🎤 **Click the microphone below and speak to Kurt**")
-        
-        # Simplified HTML speech recognition that works
-        speech_html = f"""
-        <div style="text-align: center; margin: 20px 0;">
-            <button id="speech-btn" onclick="toggleSpeech()" 
-                    style="background-color: #D2691E; color: white; border: none; 
-                           padding: 20px; font-size: 24px; border-radius: 50%; 
-                           width: 100px; height: 100px; cursor: pointer; box-shadow: 0 4px 8px rgba(0,0,0,0.3);">
-                🎤
-            </button>
-            <div id="status" style="margin-top: 15px; color: #F4E8D0; font-family: 'Courier Prime'; font-size: 16px;">
-                Click to speak to Kurt
-            </div>
-        </div>
-
-        <script>
-        let recognition = null;
-        let isListening = false;
-
-        function toggleSpeech() {{
-            const button = document.getElementById('speech-btn');
-            const status = document.getElementById('status');
-            
-            if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {{
-                if (!isListening) {{
-                    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-                    recognition = new SpeechRecognition();
-                    recognition.continuous = false;
-                    recognition.interimResults = false;
-                    recognition.lang = 'en-US';
-                    
-                    isListening = true;
-                    button.style.backgroundColor = '#ff0000';
-                    button.innerHTML = '🔴';
-                    status.innerHTML = 'Listening... speak now!';
-                    
-                    recognition.onresult = function(event) {{
-                        const transcript = event.results[0][0].transcript;
-                        status.innerHTML = 'You said: "' + transcript + '"<br>Sending to Kurt...';
-                        
-                        // Store in localStorage and trigger manual submission
-                        localStorage.setItem('speechResult', transcript);
-                        localStorage.setItem('speechTrigger', Date.now().toString());
-                        
-                        isListening = false;
-                        button.style.backgroundColor = '#D2691E';
-                        button.innerHTML = '🎤';
-                        
-                        // Show instruction to refresh
-                        setTimeout(() => {{
-                            status.innerHTML = 'Please refresh the page or type your message manually below';
-                        }}, 2000);
-                    }};
-                    
-                    recognition.onerror = function(event) {{
-                        status.innerHTML = 'Error: ' + event.error;
-                        isListening = false;
-                        button.style.backgroundColor = '#D2691E';
-                        button.innerHTML = '🎤';
-                    }};
-                    
-                    recognition.onend = function() {{
-                        isListening = false;
-                        button.style.backgroundColor = '#D2691E';
-                        button.innerHTML = '🎤';
-                        if (status.innerHTML.indexOf('You said:') === -1) {{
-                            status.innerHTML = 'Click to speak to Kurt';
-                        }}
-                    }};
-                    
-                    recognition.start();
-                }} else {{
-                    if (recognition) {{
-                        recognition.stop();
-                    }}
-                    isListening = false;
-                    button.style.backgroundColor = '#D2691E';
-                    button.innerHTML = '🎤';
-                    status.innerHTML = 'Click to speak to Kurt';
-                }}
-            }} else {{
-                status.innerHTML = 'Speech recognition not supported in this browser';
-            }}
-        }}
-        </script>
-        """
-        
-        st.components.v1.html(speech_html, height=180)
-        
-        # Check for speech result using JavaScript that doesn't violate security
-        check_speech_js = f"""
-        <script>
-        const speechResult = localStorage.getItem('speechResult');
-        const speechTrigger = localStorage.getItem('speechTrigger');
-        if (speechResult && speechTrigger) {{
-            // Found speech result, show it
-            document.body.innerHTML += '<div style="background: #2d4a22; color: #90EE90; padding: 10px; margin: 10px; border-radius: 5px; font-family: Courier;">Speech captured: "' + speechResult + '"<br>Copy this text to the input below and click Send.</div>';
-            localStorage.removeItem('speechResult');
-            localStorage.removeItem('speechTrigger');
-        }}
-        </script>
-        """
-        st.components.v1.html(check_speech_js, height=0)
-        
-        # Manual text input for speech result or typing
-        user_input = st.text_input("Type your question (or paste speech result from above):", 
+        # Step 1: Simple text input that definitely works
+        user_input = st.text_input("Step 1: Type your question here:", 
                                    placeholder="What did you learn from your Dresden experience?", 
-                                   key="speech_input")
+                                   key="debug_input")
         
-        # Send button
-        col1, col2 = st.columns([1, 3])
-        with col1:
-            send_button = st.button("Send to Kurt", type="primary", key="manual_send")
-        with col2:
-            if user_input:
-                st.caption("✅ Ready to send to Kurt")
+        # Step 2: Simple send button
+        send_button = st.button("Step 2: Send to Kurt", type="primary", key="debug_send")
+        
+        # Step 3: Show what we captured
+        if user_input:
+            st.success(f"✅ Input captured: '{user_input}'")
+        if send_button:
+            st.success(f"✅ Button clicked: {send_button}")
+        
+        # Step 4: Show if both conditions are met
+        if send_button and user_input:
+            st.success("✅ Both conditions met - should proceed to Kurt!")
         
     else:
         # Text input mode (existing functionality)
