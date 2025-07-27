@@ -337,9 +337,43 @@ def main():
     </iframe>
     """, unsafe_allow_html=True)
     
-    # Password protection
+    # Password protection with persistent storage
     if "authenticated" not in st.session_state:
-        st.session_state.authenticated = False
+        # Check if user was previously authenticated (survive page refresh)
+        auth_check_js = """
+        <script>
+        const wasAuthenticated = sessionStorage.getItem('vonnegut_authenticated');
+        if (wasAuthenticated === 'true') {
+            // User was authenticated, restore session
+            sessionStorage.setItem('restore_auth', 'true');
+        }
+        </script>
+        """
+        st.components.v1.html(auth_check_js, height=0)
+        
+        # Check for auth restoration
+        restore_auth_js = """
+        <script>
+        const shouldRestore = sessionStorage.getItem('restore_auth');
+        if (shouldRestore === 'true') {
+            sessionStorage.removeItem('restore_auth');
+            // Set a flag that can be read by Streamlit
+            const authInput = document.querySelector('input[data-testid="textInput-auth_restore"]');
+            if (authInput) {
+                authInput.value = 'restore_session';
+                authInput.dispatchEvent(new Event('input', { bubbles: true }));
+            }
+        }
+        </script>
+        """
+        st.components.v1.html(restore_auth_js, height=0)
+        
+        # Hidden input to capture auth restoration
+        auth_restore = st.text_input("", key="auth_restore", label_visibility="hidden")
+        if auth_restore == "restore_session":
+            st.session_state.authenticated = True
+        else:
+            st.session_state.authenticated = False
     
     if not st.session_state.authenticated:
         st.markdown('<div class="vonnegut-title">Kurt Vonnegut AI Oracle</div>', unsafe_allow_html=True)
@@ -349,6 +383,13 @@ def main():
         if st.button("Enter"):
             if password == "tralfamadore":
                 st.session_state.authenticated = True
+                # Store authentication in session storage to survive page refreshes
+                auth_store_js = """
+                <script>
+                sessionStorage.setItem('vonnegut_authenticated', 'true');
+                </script>
+                """
+                st.components.v1.html(auth_store_js, height=0)
                 st.rerun()
             else:
                 st.error("Wrong passcode. So it goes.")
