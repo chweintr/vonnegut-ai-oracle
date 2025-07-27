@@ -467,20 +467,9 @@ def main():
                         const transcript = event.results[0][0].transcript;
                         status.innerHTML = 'You said: "' + transcript + '"<br>Sending to Kurt...';
                         
-                        // Update the hidden input with the transcript
-                        const speechInput = window.parent.document.querySelector('input[data-testid="textInput-speech_input"]');
-                        if (speechInput) {{
-                            speechInput.value = transcript;
-                            speechInput.dispatchEvent(new Event('input', {{ bubbles: true }}));
-                            
-                            // Trigger the form submission
-                            setTimeout(() => {{
-                                const submitBtn = window.parent.document.querySelector('button[data-testid="baseButton-secondary"]');
-                                if (submitBtn) {{
-                                    submitBtn.click();
-                                }}
-                            }}, 100);
-                        }}
+                        // Store transcript and trigger reload using URL fragment
+                        localStorage.setItem('speechResult', transcript);
+                        window.parent.location.hash = 'speech:' + Date.now();
                         
                         isListening = false;
                         button.style.backgroundColor = '#D2691E';
@@ -522,9 +511,42 @@ def main():
         
         st.components.v1.html(speech_html, height=180)
         
-        # Hidden input and submit that speech recognition will use
+        # Check for speech result from localStorage
+        check_speech_js = """
+        <script>
+        const speechResult = localStorage.getItem('speechResult');
+        if (speechResult && window.location.hash.includes('speech:')) {
+            // Found speech result, clear it and submit
+            localStorage.removeItem('speechResult');
+            window.location.hash = '';
+            
+            // Auto-fill the input and submit
+            const textInput = document.querySelector('input[data-testid="textInput-speech_input"]');
+            if (textInput) {
+                textInput.value = speechResult;
+                textInput.dispatchEvent(new Event('input', { bubbles: true }));
+                
+                // Force a page reload to trigger submission
+                setTimeout(() => {
+                    window.location.reload();
+                }, 100);
+            }
+        }
+        </script>
+        """
+        st.components.v1.html(check_speech_js, height=0)
+        
+        # Get speech result if available
+        if "speech_result" not in st.session_state:
+            st.session_state.speech_result = ""
+            
+        # Check URL for speech trigger
+        import urllib.parse
+        url_fragment = st.query_params.get("speech", "")
+        
+        # Simple fallback - just check if we have user input
         user_input = st.text_input("", placeholder="", key="speech_input", label_visibility="hidden")
-        send_button = st.button("Submit", type="secondary", key="speech_submit", disabled=True)
+        send_button = user_input != ""  # Auto-send if there's input
         
     else:
         # Text input mode (existing functionality)
