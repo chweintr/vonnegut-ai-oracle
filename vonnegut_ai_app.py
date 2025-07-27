@@ -422,48 +422,72 @@ def main():
         st.markdown("### 🎤 Voice Conversation with Kurt")
         
         try:
-            from streamlit_mic_recorder import speech_to_text
+            from streamlit_mic_recorder import speech_to_text, mic_recorder
             
-            st.info("🎤 **Click the microphone below and speak to Kurt - he'll respond automatically!**")
+            st.info("🎤 **DEBUGGING: Testing different approaches**")
             
-            # Auto-submit callback function
-            def voice_callback():
-                if st.session_state.get('voice_stt_output'):
-                    # Auto-process the speech and trigger Kurt's response
-                    st.session_state.voice_ready = True
-                    st.rerun()
-            
-            # Initialize voice state
-            if "voice_ready" not in st.session_state:
-                st.session_state.voice_ready = False
-            
-            # Speech-to-text component with auto-callback
-            speech_text = speech_to_text(
+            # Method 1: Basic speech_to_text with debugging
+            st.subheader("Method 1: Basic speech_to_text")
+            text1 = speech_to_text(
                 language='en',
-                use_container_width=True, 
-                just_once=True,
-                key='voice_stt',
-                callback=voice_callback
+                start_prompt="🎤 Test 1: Click to speak",
+                stop_prompt="⏹️ Stop recording",
+                just_once=False,
+                key="stt_test1"
             )
             
-            # Check for voice input and auto-submit
-            if st.session_state.voice_ready and st.session_state.get('voice_stt_output'):
-                user_input = st.session_state.voice_stt_output
+            col1, col2 = st.columns(2)
+            with col1:
+                st.write("Direct return:", text1)
+            with col2:
+                st.write("Session state:", st.session_state.get('stt_test1'))
+                st.write("Output key:", st.session_state.get('stt_test1_output'))
+            
+            # Method 2: Try mic_recorder (audio only)
+            st.subheader("Method 2: Audio recorder only")
+            audio = mic_recorder(
+                start_prompt="🎤 Test 2: Record audio",
+                stop_prompt="⏹️ Stop recording",
+                key="audio_test"
+            )
+            
+            if audio:
+                st.success(f"✅ Audio captured! Size: {len(audio['bytes'])} bytes")
+                st.audio(audio['bytes'])
+            else:
+                st.info("No audio captured yet")
+            
+            # Method 3: Different speech_to_text config
+            st.subheader("Method 3: Different config")
+            text3 = speech_to_text(
+                language='en',
+                start_prompt="🎤 Test 3: Speak now",
+                stop_prompt="⏹️ Done",
+                just_once=True,
+                use_container_width=False,
+                key="stt_test3"
+            )
+            
+            st.write("Method 3 result:", text3)
+            
+            # Check for working speech input
+            working_text = text1 or text3 or st.session_state.get('stt_test1_output') or st.session_state.get('stt_test3_output')
+            
+            if working_text:
+                st.success(f"🎉 SPEECH DETECTED: \"{working_text}\"")
+                user_input = working_text
                 send_button = True
-                st.session_state.voice_ready = False
-                # Clear the output so it doesn't repeat
-                st.session_state.voice_stt_output = ""
             else:
                 user_input = ""
                 send_button = False
                 
-            # Show what was captured
-            if speech_text:
-                st.success(f"🎤 You said: \"{speech_text}\" - Sending to Kurt...")
-                
         except ImportError:
-            st.error("⚠️ streamlit-mic-recorder not installed. Installing now...")
-            st.info("Please wait for deployment to complete, then refresh the page.")
+            st.error("⚠️ streamlit-mic-recorder not installed yet...")
+            st.info("Installing... please refresh in 1-2 minutes")
+            user_input = ""
+            send_button = False
+        except Exception as e:
+            st.error(f"Error with mic recorder: {str(e)}")
             user_input = ""
             send_button = False
         
