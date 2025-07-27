@@ -395,25 +395,113 @@ def main():
             </div>
             """, unsafe_allow_html=True)
     
-    # User input
-    user_input = st.text_input("Ask Kurt anything:", placeholder="What did you learn from your Dresden experience?")
+    # Conversation mode selector
+    col_mode1, col_mode2 = st.columns([2, 3])
     
-    col1, col2 = st.columns([1, 4])
+    with col_mode1:
+        conversation_mode = st.selectbox(
+            "Conversation mode:",
+            options=["Text → Text", "Text → Audio", "Audio → Audio"],
+            index=1 if (ELEVENLABS_API_KEY and ELEVENLABS_VOICE_ID) else 0
+        )
     
-    with col1:
-        send_button = st.button("Send", type="primary")
-    
-    with col2:
-        voice_enabled = st.checkbox("🔊 Enable Vonnegut voice output", value=bool(ELEVENLABS_API_KEY and ELEVENLABS_VOICE_ID))
-        if voice_enabled:
-            st.caption("💬 Type your message → Kurt responds with voice")
+    with col_mode2:
+        if conversation_mode == "Audio → Audio":
+            st.caption("🎤 Click to speak → Kurt responds with voice")
+        elif conversation_mode == "Text → Audio":
+            st.caption("⌨️ Type your message → Kurt responds with voice")
         else:
-            if not ELEVENLABS_API_KEY:
-                st.caption("⚠️ ElevenLabs API key missing")
-            elif not ELEVENLABS_VOICE_ID:
-                st.caption("⚠️ ElevenLabs Voice ID missing")
-            else:
-                st.caption("🔇 Voice disabled")
+            st.caption("⌨️ Type your message → Kurt responds with text")
+    
+    # User input based on mode
+    user_input = ""
+    send_button = False
+    
+    if conversation_mode == "Audio → Audio":
+        # Audio input mode
+        st.markdown("### 🎤 Speak to Kurt")
+        
+        # Simple audio recording using browser's speech recognition
+        audio_input_html = """
+        <div style="text-align: center; margin: 20px 0;">
+            <button id="voiceBtn" onclick="startVoiceRecognition()" 
+                    style="background-color: #D2691E; color: #2B1B0A; border: none; 
+                           padding: 15px 30px; font-size: 18px; border-radius: 10px; 
+                           font-family: 'Courier Prime', monospace; cursor: pointer;">
+                🎤 Hold to Speak
+            </button>
+            <div id="voiceResult" style="margin-top: 15px; color: #F4E8D0; 
+                                        font-family: 'Courier Prime', monospace;"></div>
+        </div>
+        
+        <script>
+        function startVoiceRecognition() {
+            if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
+                const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+                const recognition = new SpeechRecognition();
+                
+                recognition.continuous = false;
+                recognition.interimResults = false;
+                recognition.lang = 'en-US';
+                
+                const btn = document.getElementById('voiceBtn');
+                const result = document.getElementById('voiceResult');
+                
+                btn.innerHTML = '🔴 Listening...';
+                btn.disabled = true;
+                result.innerHTML = 'Listening for your question...';
+                
+                recognition.onresult = function(event) {
+                    const transcript = event.results[0][0].transcript;
+                    result.innerHTML = 'You said: "' + transcript + '"';
+                    
+                    // Send to Streamlit
+                    const textInput = window.parent.document.querySelector('input[aria-label="Ask Kurt anything:"]');
+                    if (textInput) {
+                        textInput.value = transcript;
+                        textInput.dispatchEvent(new Event('input', { bubbles: true }));
+                    }
+                    
+                    btn.innerHTML = '🎤 Hold to Speak';
+                    btn.disabled = false;
+                };
+                
+                recognition.onerror = function(event) {
+                    result.innerHTML = 'Error: ' + event.error;
+                    btn.innerHTML = '🎤 Hold to Speak';
+                    btn.disabled = false;
+                };
+                
+                recognition.onend = function() {
+                    btn.innerHTML = '🎤 Hold to Speak';
+                    btn.disabled = false;
+                };
+                
+                recognition.start();
+            } else {
+                document.getElementById('voiceResult').innerHTML = 'Speech recognition not supported in this browser';
+            }
+        }
+        </script>
+        """
+        
+        st.components.v1.html(audio_input_html, height=150)
+        
+        # Keep text input for fallback/editing
+        user_input = st.text_input("Or type here:", placeholder="Your question will appear here when you speak...", key="audio_fallback")
+        send_button = st.button("Send", type="primary", key="audio_send")
+        
+    else:
+        # Text input mode (existing functionality)
+        user_input = st.text_input("Ask Kurt anything:", placeholder="What did you learn from your Dresden experience?")
+        
+        col1, col2 = st.columns([1, 4])
+        
+        with col1:
+            send_button = st.button("Send", type="primary")
+        
+        with col2:
+            st.caption("💭 Kurt will respond in your selected mode")
     
     if send_button and user_input:
         # Add user message to history
@@ -429,33 +517,22 @@ def main():
         # Add response to history
         st.session_state.conversation_history.append({"role": "assistant", "content": response})
         
-        # Synthesize speech if enabled
-        if voice_enabled and ELEVENLABS_API_KEY and ELEVENLABS_VOICE_ID:
-            with st.spinner("Generating Kurt's voice..."):
+        # Synthesize speech based on conversation mode
+        voice_output_enabled = (conversation_mode in ["Text → Audio", "Audio → Audio"]) and ELEVENLABS_API_KEY and ELEVENLABS_VOICE_ID
+        
+        if voice_output_enabled:
+            with st.spinner("*"):
                 audio_data = synthesize_speech(response)
                 
                 if audio_data:
-                    st.success(f"✅ Audio generated! Size: {len(audio_data)} bytes")
-                    
-                    # Try direct audio display
-                    st.markdown("### 🎵 Kurt Vonnegut's Voice")
+                    # Simple, magical audio display
                     st.audio(audio_data, format="audio/mpeg", start_time=0)
-                    
-                    # Also provide download as backup
-                    st.download_button(
-                        label="💾 Download Audio (if player doesn't work)",
-                        data=audio_data,
-                        file_name=f"vonnegut_{int(time.time())}.mp3",
-                        mime="audio/mpeg"
-                    )
-                    
-                    st.info("🔊 **Click the play ▶️ button above to hear Kurt's voice!**")
                     
                 else:
                     st.error("❌ Voice generation failed - no audio data")
         
         # Only rerun if no voice was generated to avoid wiping audio player
-        if not (voice_enabled and ELEVENLABS_API_KEY and ELEVENLABS_VOICE_ID):
+        if not voice_output_enabled:
             st.rerun()
     
     # Footer
