@@ -421,15 +421,25 @@ def main():
         # Audio input mode
         st.markdown("### Audio Conversation Mode")
         
-        # Simple text input that works
-        user_input = st.text_input("Type your question and Kurt will respond with voice:", placeholder="What did you learn from your Dresden experience?", key="audio_input")
-        
-        # Make button more prominent
+        # Press to talk button
         col1, col2 = st.columns([1, 3])
         with col1:
-            send_button = st.button("🔊 Send", type="primary", key="audio_send")
+            if st.button("🎤 Press to Talk", type="primary", key="talk_button"):
+                st.session_state.listening = True
         with col2:
-            st.caption("Kurt will respond with his voice")
+            st.caption("Click the microphone to speak to Kurt")
+        
+        # Show listening state
+        if "listening" in st.session_state and st.session_state.listening:
+            st.info("🔴 **Listening... speak now!**")
+            st.caption("Say your question out loud, then type what you said below:")
+            st.session_state.listening = False
+            
+        # Text input for what was spoken (or typing)
+        user_input = st.text_input("What did you say? (or just type your question):", placeholder="What did you learn from your Dresden experience?", key="audio_input")
+        
+        # Send button
+        send_button = st.button("Send to Kurt", type="secondary", key="audio_send")
         
     else:
         # Text input mode (existing functionality)
