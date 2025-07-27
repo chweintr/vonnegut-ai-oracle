@@ -430,6 +430,25 @@ def main():
         # Voice input with working auto-submit
         st.info("Click the microphone, speak, and Kurt will respond automatically")
         
+        # Request microphone permissions explicitly
+        mic_permission_html = """
+        <script>
+        // Request microphone permission explicitly
+        if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+            navigator.mediaDevices.getUserMedia({ audio: true })
+                .then(stream => {
+                    console.log('Microphone access granted');
+                    // Stop the stream since we just wanted permission
+                    stream.getTracks().forEach(track => track.stop());
+                })
+                .catch(err => {
+                    console.error('Microphone access denied:', err);
+                });
+        }
+        </script>
+        """
+        st.components.v1.html(mic_permission_html, height=0)
+        
         # Auto-refreshing speech recognition that bypasses iframe restrictions
         if "listening_active" not in st.session_state:
             st.session_state.listening_active = False
