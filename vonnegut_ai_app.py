@@ -430,100 +430,129 @@ def main():
         # Voice input with working auto-submit
         st.info("Click the microphone, speak, and Kurt will respond automatically")
         
-        # Speech recognition that actually works
-        voice_html = """
-        <div style="text-align: center; margin: 30px 0;">
-            <button id="mic" onclick="startListening()" 
-                    style="background: linear-gradient(45deg, #D2691E, #ff6b35); 
-                           color: white; border: none; border-radius: 50%; 
-                           width: 120px; height: 120px; font-size: 30px; 
-                           cursor: pointer; box-shadow: 0 8px 16px rgba(210,105,30,0.3);
-                           transition: all 0.3s ease;">
-                🎤
-            </button>
-            <div id="result" style="margin-top: 20px; font-family: 'Courier Prime'; color: #F4E8D0; font-size: 18px;">
-                Ready to listen
-            </div>
-        </div>
-        
-        <script>
-        let recognition;
-        let isListening = false;
-        
-        function startListening() {
-            const button = document.getElementById('mic');
-            const result = document.getElementById('result');
+        # Auto-refreshing speech recognition that bypasses iframe restrictions
+        if "listening_active" not in st.session_state:
+            st.session_state.listening_active = False
+        if "last_speech" not in st.session_state:
+            st.session_state.last_speech = ""
             
-            if ('webkitSpeechRecognition' in window) {
-                if (!isListening) {
-                    recognition = new webkitSpeechRecognition();
-                    recognition.continuous = false;
-                    recognition.interimResults = false;
-                    recognition.lang = 'en-US';
+        # Start listening button
+        if not st.session_state.listening_active:
+            if st.button("🎤 Start Voice Conversation", type="primary", key="start_voice"):
+                st.session_state.listening_active = True
+                st.rerun()
+        else:
+            # Show listening interface with auto-refresh
+            st.info("🔴 **Voice conversation active** - Speak your question to Kurt")
+            
+            # Check for speech every few seconds using browser storage
+            voice_check_html = f"""
+            <div style="text-align: center; margin: 20px 0;">
+                <div style="background: linear-gradient(45deg, #ff0000, #cc0000); 
+                           color: white; border-radius: 50%; 
+                           width: 80px; height: 80px; font-size: 24px; 
+                           display: flex; align-items: center; justify-content: center;
+                           margin: 0 auto; animation: pulse 1.5s infinite;">
+                    🔴
+                </div>
+                <div id="speech-status" style="margin-top: 15px; color: #F4E8D0; font-family: 'Courier Prime';">
+                    Listening for your voice...
+                </div>
+            </div>
+            
+            <style>
+            @keyframes pulse {{
+                0% {{ transform: scale(1); opacity: 1; }}
+                50% {{ transform: scale(1.1); opacity: 0.7; }}
+                100% {{ transform: scale(1); opacity: 1; }}
+            }}
+            </style>
+            
+            <script>
+            // Auto-start speech recognition when this loads
+            if ('webkitSpeechRecognition' in window && !window.voiceStarted) {{
+                window.voiceStarted = true;
+                const recognition = new webkitSpeechRecognition();
+                recognition.continuous = false;
+                recognition.interimResults = false;
+                recognition.lang = 'en-US';
+                
+                const status = document.getElementById('speech-status');
+                status.innerHTML = '🔴 Listening... speak now!';
+                
+                recognition.onresult = function(event) {{
+                    const transcript = event.results[0][0].transcript;
+                    status.innerHTML = '✅ Got it: "' + transcript + '" - Processing...';
                     
-                    isListening = true;
-                    button.style.background = 'linear-gradient(45deg, #ff0000, #cc0000)';
-                    button.innerHTML = '🔴';
-                    result.innerHTML = '🔴 Listening... speak now!';
+                    // Store result and trigger page refresh
+                    sessionStorage.setItem('voiceResult', transcript);
+                    sessionStorage.setItem('voiceTimestamp', Date.now().toString());
                     
-                    recognition.onresult = function(event) {
-                        const transcript = event.results[0][0].transcript;
-                        result.innerHTML = '📤 "' + transcript + '" → Sending to Kurt...';
-                        
-                        // Trigger Streamlit rerun with the speech
-                        window.parent.postMessage({
-                            type: 'streamlit:setComponentValue',
-                            value: JSON.stringify({speech: transcript, timestamp: Date.now()})
-                        }, '*');
-                        
-                        isListening = false;
-                        button.style.background = 'linear-gradient(45deg, #D2691E, #ff6b35)';
-                        button.innerHTML = '🎤';
-                    };
-                    
-                    recognition.onerror = function(event) {
-                        result.innerHTML = '❌ Error: ' + event.error;
-                        isListening = false;
-                        button.style.background = 'linear-gradient(45deg, #D2691E, #ff6b35)';
-                        button.innerHTML = '🎤';
-                    };
-                    
-                    recognition.start();
-                } else {
-                    recognition.stop();
-                    isListening = false;
-                    button.style.background = 'linear-gradient(45deg, #D2691E, #ff6b35)';
-                    button.innerHTML = '🎤';
-                    result.innerHTML = 'Ready to listen';
+                    // Force page refresh to process the speech
+                    setTimeout(() => {{
+                        window.top.location.reload();
+                    }}, 1000);
+                }};
+                
+                recognition.onerror = function(event) {{
+                    status.innerHTML = '❌ Error: ' + event.error + ' - Retrying...';
+                    setTimeout(() => {{
+                        recognition.start();
+                    }}, 2000);
+                }};
+                
+                recognition.start();
+            }}
+            
+            // Check for stored voice result
+            const storedResult = sessionStorage.getItem('voiceResult');
+            const storedTime = sessionStorage.getItem('voiceTimestamp');
+            if (storedResult && storedTime) {{
+                document.getElementById('speech-status').innerHTML = 
+                    '📤 Processing: "' + storedResult + '"';
+            }}
+            </script>
+            """
+            
+            st.components.v1.html(voice_check_html, height=150)
+            
+            # Check for speech result from session storage
+            speech_check_js = """
+            <script>
+            const voiceResult = sessionStorage.getItem('voiceResult');
+            if (voiceResult) {
+                // Clear the stored result
+                sessionStorage.removeItem('voiceResult');
+                sessionStorage.removeItem('voiceTimestamp');
+                
+                // Auto-fill hidden input to trigger processing
+                const hiddenInput = document.querySelector('input[data-testid="textInput-voice_result"]');
+                if (hiddenInput) {
+                    hiddenInput.value = voiceResult;
+                    hiddenInput.dispatchEvent(new Event('input', { bubbles: true }));
                 }
-            } else {
-                result.innerHTML = '❌ Speech recognition not supported';
             }
-        }
-        </script>
-        """
-        
-        # Display the voice interface
-        component_value = st.components.v1.html(voice_html, height=250)
-        
-        # Simple approach: manual text input that works with copy-paste
-        st.markdown("---")
-        st.info("After speaking, copy your text from above and paste it below:")
-        
-        user_input = st.text_input("Paste what you said here:", 
-                                   placeholder="Copy your speech from the microphone result above", 
-                                   key="voice_manual_input")
-        
-        # Send button that definitely works
-        send_button = st.button("🔊 Send to Kurt", type="primary", key="voice_send_btn")
-        
-        # Show status
-        if user_input and not send_button:
-            st.success(f"✅ Ready to send: '{user_input}'")
-        elif send_button and not user_input:
-            st.error("❌ Please paste your speech text first")
-        elif send_button and user_input:
-            st.success("🚀 Sending to Kurt...")
+            </script>
+            """
+            st.components.v1.html(speech_check_js, height=0)
+            
+            # Hidden input to capture voice result
+            voice_result = st.text_input("", key="voice_result", label_visibility="hidden")
+            
+            # Process voice input automatically
+            if voice_result and voice_result != st.session_state.last_speech:
+                st.session_state.last_speech = voice_result
+                st.session_state.listening_active = False
+                user_input = voice_result
+                send_button = True
+            else:
+                user_input = ""
+                send_button = False
+                
+            # Stop button
+            if st.button("⏹️ Stop Voice Conversation", key="stop_voice"):
+                st.session_state.listening_active = False
+                st.rerun()
         
     else:
         # Text input mode (existing functionality)
