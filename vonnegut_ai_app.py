@@ -357,6 +357,10 @@ def main():
     # Initialize session state
     if "conversation_history" not in st.session_state:
         st.session_state.conversation_history = []
+    if "voice_input" not in st.session_state:
+        st.session_state.voice_input = ""
+    if "submit_voice" not in st.session_state:
+        st.session_state.submit_voice = False
     
     # Sidebar
     with st.sidebar:
@@ -421,93 +425,10 @@ def main():
         # Audio input mode
         st.markdown("### 🎤 Speak to Kurt")
         
-        # Simple audio recording using browser's speech recognition
-        audio_input_html = """
-        <div style="text-align: center; margin: 20px 0;">
-            <button id="voiceBtn" onclick="startVoiceRecognition()" 
-                    style="background-color: #D2691E; color: #2B1B0A; border: none; 
-                           padding: 15px 30px; font-size: 18px; border-radius: 10px; 
-                           font-family: 'Courier Prime', monospace; cursor: pointer;">
-                🎤 Press to Speak
-            </button>
-            <div id="voiceResult" style="margin-top: 15px; color: #F4E8D0; 
-                                        font-family: 'Courier Prime', monospace;"></div>
-        </div>
+        # For now, use text input with clear instructions
+        st.info("🎤 **Audio input coming soon!** For now, please type your question below.")
         
-        <script>
-        function startVoiceRecognition() {
-            if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
-                const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-                const recognition = new SpeechRecognition();
-                
-                recognition.continuous = false;
-                recognition.interimResults = false;
-                recognition.lang = 'en-US';
-                
-                const btn = document.getElementById('voiceBtn');
-                const result = document.getElementById('voiceResult');
-                
-                btn.innerHTML = '🔴 Listening...';
-                btn.disabled = true;
-                result.innerHTML = 'Listening for your question...';
-                
-                recognition.onresult = function(event) {
-                    const transcript = event.results[0][0].transcript;
-                    result.innerHTML = 'You said: "' + transcript + '"';
-                    
-                    // Find the correct text input and send button
-                    const textInputs = window.parent.document.querySelectorAll('input[type="text"]');
-                    let targetInput = null;
-                    for (let input of textInputs) {
-                        if (input.placeholder && input.placeholder.includes('Your question will appear here')) {
-                            targetInput = input;
-                            break;
-                        }
-                    }
-                    
-                    if (targetInput) {
-                        targetInput.value = transcript;
-                        targetInput.dispatchEvent(new Event('input', { bubbles: true }));
-                        
-                        // Auto-submit by clicking the send button
-                        setTimeout(() => {
-                            const sendButtons = window.parent.document.querySelectorAll('button');
-                            for (let button of sendButtons) {
-                                if (button.textContent.includes('Send') && !button.disabled) {
-                                    button.click();
-                                    break;
-                                }
-                            }
-                        }, 100);
-                    }
-                    
-                    btn.innerHTML = '🎤 Press to Speak';
-                    btn.disabled = false;
-                };
-                
-                recognition.onerror = function(event) {
-                    result.innerHTML = 'Error: ' + event.error;
-                    btn.innerHTML = '🎤 Press to Speak';
-                    btn.disabled = false;
-                };
-                
-                recognition.onend = function() {
-                    btn.innerHTML = '🎤 Press to Speak';
-                    btn.disabled = false;
-                };
-                
-                recognition.start();
-            } else {
-                document.getElementById('voiceResult').innerHTML = 'Speech recognition not supported in this browser';
-            }
-        }
-        </script>
-        """
-        
-        st.components.v1.html(audio_input_html, height=150)
-        
-        # Keep text input for fallback/editing
-        user_input = st.text_input("Or type here:", placeholder="Your question will appear here when you speak...", key="audio_fallback")
+        user_input = st.text_input("Type your question:", placeholder="What did you learn from your Dresden experience?", key="audio_fallback")
         send_button = st.button("Send", type="primary", key="audio_send")
         
     else:
@@ -521,6 +442,13 @@ def main():
         
         with col2:
             st.caption("💭 Kurt will respond in your selected mode")
+    
+    # Check for voice input from session state
+    if st.session_state.submit_voice and st.session_state.voice_input:
+        user_input = st.session_state.voice_input
+        st.session_state.submit_voice = False
+        st.session_state.voice_input = ""
+        send_button = True
     
     if send_button and user_input:
         # Add user message to history
