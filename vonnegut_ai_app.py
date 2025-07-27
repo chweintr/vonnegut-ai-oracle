@@ -418,28 +418,117 @@ def main():
     send_button = False
     
     if conversation_mode == "Audio → Audio":
-        # Audio input mode - SIMPLIFIED FOR DEBUGGING
-        st.markdown("### Audio Conversation Mode")
+        # Natural voice conversation
+        st.markdown("### 🎤 Voice Conversation with Kurt")
         
-        st.warning("🔧 **Debugging Mode** - Let's test step by step")
+        # Initialize speech state
+        if "voice_text" not in st.session_state:
+            st.session_state.voice_text = ""
+        if "auto_send" not in st.session_state:
+            st.session_state.auto_send = False
+            
+        # Voice input with working auto-submit
+        st.info("Click the microphone, speak, and Kurt will respond automatically")
         
-        # Step 1: Simple text input that definitely works
-        user_input = st.text_input("Step 1: Type your question here:", 
-                                   placeholder="What did you learn from your Dresden experience?", 
-                                   key="debug_input")
+        # Speech recognition that actually works
+        voice_html = """
+        <div style="text-align: center; margin: 30px 0;">
+            <button id="mic" onclick="startListening()" 
+                    style="background: linear-gradient(45deg, #D2691E, #ff6b35); 
+                           color: white; border: none; border-radius: 50%; 
+                           width: 120px; height: 120px; font-size: 30px; 
+                           cursor: pointer; box-shadow: 0 8px 16px rgba(210,105,30,0.3);
+                           transition: all 0.3s ease;">
+                🎤
+            </button>
+            <div id="result" style="margin-top: 20px; font-family: 'Courier Prime'; color: #F4E8D0; font-size: 18px;">
+                Ready to listen
+            </div>
+        </div>
         
-        # Step 2: Simple send button
-        send_button = st.button("Step 2: Send to Kurt", type="primary", key="debug_send")
+        <script>
+        let recognition;
+        let isListening = false;
         
-        # Step 3: Show what we captured
-        if user_input:
-            st.success(f"✅ Input captured: '{user_input}'")
-        if send_button:
-            st.success(f"✅ Button clicked: {send_button}")
+        function startListening() {
+            const button = document.getElementById('mic');
+            const result = document.getElementById('result');
+            
+            if ('webkitSpeechRecognition' in window) {
+                if (!isListening) {
+                    recognition = new webkitSpeechRecognition();
+                    recognition.continuous = false;
+                    recognition.interimResults = false;
+                    recognition.lang = 'en-US';
+                    
+                    isListening = true;
+                    button.style.background = 'linear-gradient(45deg, #ff0000, #cc0000)';
+                    button.innerHTML = '🔴';
+                    result.innerHTML = '🔴 Listening... speak now!';
+                    
+                    recognition.onresult = function(event) {
+                        const transcript = event.results[0][0].transcript;
+                        result.innerHTML = '📤 "' + transcript + '" → Sending to Kurt...';
+                        
+                        // Trigger Streamlit rerun with the speech
+                        window.parent.postMessage({
+                            type: 'streamlit:setComponentValue',
+                            value: JSON.stringify({speech: transcript, timestamp: Date.now()})
+                        }, '*');
+                        
+                        isListening = false;
+                        button.style.background = 'linear-gradient(45deg, #D2691E, #ff6b35)';
+                        button.innerHTML = '🎤';
+                    };
+                    
+                    recognition.onerror = function(event) {
+                        result.innerHTML = '❌ Error: ' + event.error;
+                        isListening = false;
+                        button.style.background = 'linear-gradient(45deg, #D2691E, #ff6b35)';
+                        button.innerHTML = '🎤';
+                    };
+                    
+                    recognition.start();
+                } else {
+                    recognition.stop();
+                    isListening = false;
+                    button.style.background = 'linear-gradient(45deg, #D2691E, #ff6b35)';
+                    button.innerHTML = '🎤';
+                    result.innerHTML = 'Ready to listen';
+                }
+            } else {
+                result.innerHTML = '❌ Speech recognition not supported';
+            }
+        }
+        </script>
+        """
         
-        # Step 4: Show if both conditions are met
-        if send_button and user_input:
-            st.success("✅ Both conditions met - should proceed to Kurt!")
+        # Display the voice interface
+        component_value = st.components.v1.html(voice_html, height=250)
+        
+        # Check for speech result and auto-submit
+        if component_value:
+            try:
+                import json
+                data = json.loads(component_value)
+                if "speech" in data:
+                    user_input = data["speech"]
+                    send_button = True
+                    st.session_state.voice_text = user_input
+                    st.session_state.auto_send = True
+                    st.rerun()
+            except:
+                pass
+        
+        # Handle auto-send from session state
+        if st.session_state.auto_send and st.session_state.voice_text:
+            user_input = st.session_state.voice_text
+            send_button = True
+            st.session_state.auto_send = False
+            st.session_state.voice_text = ""
+        else:
+            user_input = ""
+            send_button = False
         
     else:
         # Text input mode (existing functionality)
