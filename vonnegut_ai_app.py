@@ -506,29 +506,24 @@ def main():
         # Display the voice interface
         component_value = st.components.v1.html(voice_html, height=250)
         
-        # Check for speech result and auto-submit
-        if component_value:
-            try:
-                import json
-                data = json.loads(component_value)
-                if "speech" in data:
-                    user_input = data["speech"]
-                    send_button = True
-                    st.session_state.voice_text = user_input
-                    st.session_state.auto_send = True
-                    st.rerun()
-            except:
-                pass
+        # Simple approach: manual text input that works with copy-paste
+        st.markdown("---")
+        st.info("After speaking, copy your text from above and paste it below:")
         
-        # Handle auto-send from session state
-        if st.session_state.auto_send and st.session_state.voice_text:
-            user_input = st.session_state.voice_text
-            send_button = True
-            st.session_state.auto_send = False
-            st.session_state.voice_text = ""
-        else:
-            user_input = ""
-            send_button = False
+        user_input = st.text_input("Paste what you said here:", 
+                                   placeholder="Copy your speech from the microphone result above", 
+                                   key="voice_manual_input")
+        
+        # Send button that definitely works
+        send_button = st.button("🔊 Send to Kurt", type="primary", key="voice_send_btn")
+        
+        # Show status
+        if user_input and not send_button:
+            st.success(f"✅ Ready to send: '{user_input}'")
+        elif send_button and not user_input:
+            st.error("❌ Please paste your speech text first")
+        elif send_button and user_input:
+            st.success("🚀 Sending to Kurt...")
         
     else:
         # Text input mode (existing functionality)
