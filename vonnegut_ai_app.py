@@ -423,7 +423,13 @@ def main():
         
         # Simple text input that works
         user_input = st.text_input("Type your question and Kurt will respond with voice:", placeholder="What did you learn from your Dresden experience?", key="audio_input")
-        send_button = st.button("Send", type="primary", key="audio_send")
+        
+        # Make button more prominent
+        col1, col2 = st.columns([1, 3])
+        with col1:
+            send_button = st.button("🔊 Send", type="primary", key="audio_send")
+        with col2:
+            st.caption("Kurt will respond with his voice")
         
     else:
         # Text input mode (existing functionality)
