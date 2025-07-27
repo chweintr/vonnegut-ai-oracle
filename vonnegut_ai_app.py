@@ -418,162 +418,102 @@ def main():
     send_button = False
     
     if conversation_mode == "Audio → Audio":
-        # Natural voice conversation
+        # Simple voice conversation that actually works
         st.markdown("### 🎤 Voice Conversation with Kurt")
         
         # Initialize speech state
-        if "voice_text" not in st.session_state:
-            st.session_state.voice_text = ""
-        if "auto_send" not in st.session_state:
-            st.session_state.auto_send = False
+        if "speech_input" not in st.session_state:
+            st.session_state.speech_input = ""
+        if "speech_ready" not in st.session_state:
+            st.session_state.speech_ready = False
             
-        # Voice input with working auto-submit
-        st.info("Click the microphone, speak, and Kurt will respond automatically")
+        # Simple one-button speech interface
+        if st.button("🎤 Click and Speak", type="primary", key="speak_now"):
+            st.session_state.speech_ready = True
+            st.rerun()
         
-        # Request microphone permissions explicitly
-        mic_permission_html = """
-        <script>
-        // Request microphone permission explicitly
-        if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
-            navigator.mediaDevices.getUserMedia({ audio: true })
-                .then(stream => {
-                    console.log('Microphone access granted');
-                    // Stop the stream since we just wanted permission
-                    stream.getTracks().forEach(track => track.stop());
-                })
-                .catch(err => {
-                    console.error('Microphone access denied:', err);
-                });
-        }
-        </script>
-        """
-        st.components.v1.html(mic_permission_html, height=0)
-        
-        # Auto-refreshing speech recognition that bypasses iframe restrictions
-        if "listening_active" not in st.session_state:
-            st.session_state.listening_active = False
-        if "last_speech" not in st.session_state:
-            st.session_state.last_speech = ""
+        # If ready to listen, show speech interface
+        if st.session_state.speech_ready:
+            st.info("🔴 **Speak now!** Your speech will automatically send to Kurt")
             
-        # Start listening button
-        if not st.session_state.listening_active:
-            if st.button("🎤 Start Voice Conversation", type="primary", key="start_voice"):
-                st.session_state.listening_active = True
-                st.rerun()
-        else:
-            # Show listening interface with auto-refresh
-            st.info("🔴 **Voice conversation active** - Speak your question to Kurt")
-            
-            # Check for speech every few seconds using browser storage
-            voice_check_html = f"""
-            <div style="text-align: center; margin: 20px 0;">
-                <div style="background: linear-gradient(45deg, #ff0000, #cc0000); 
-                           color: white; border-radius: 50%; 
-                           width: 80px; height: 80px; font-size: 24px; 
-                           display: flex; align-items: center; justify-content: center;
-                           margin: 0 auto; animation: pulse 1.5s infinite;">
-                    🔴
+            # Simple working speech recognition
+            speech_html = """
+            <div style="text-align: center; margin: 20px;">
+                <div id="status" style="color: #F4E8D0; font-family: 'Courier Prime'; font-size: 18px; margin-bottom: 15px;">
+                    Starting microphone...
                 </div>
-                <div id="speech-status" style="margin-top: 15px; color: #F4E8D0; font-family: 'Courier Prime';">
-                    Listening for your voice...
-                </div>
+                <button id="mic-btn" style="display: none;">🎤</button>
             </div>
             
-            <style>
-            @keyframes pulse {{
-                0% {{ transform: scale(1); opacity: 1; }}
-                50% {{ transform: scale(1.1); opacity: 0.7; }}
-                100% {{ transform: scale(1); opacity: 1; }}
-            }}
-            </style>
-            
             <script>
-            // Auto-start speech recognition when this loads
-            if ('webkitSpeechRecognition' in window && !window.voiceStarted) {{
-                window.voiceStarted = true;
+            // Auto-start speech recognition immediately
+            if ('webkitSpeechRecognition' in window) {
                 const recognition = new webkitSpeechRecognition();
                 recognition.continuous = false;
                 recognition.interimResults = false;
                 recognition.lang = 'en-US';
                 
-                const status = document.getElementById('speech-status');
-                status.innerHTML = '🔴 Listening... speak now!';
+                const status = document.getElementById('status');
+                status.innerHTML = '🔴 LISTENING... speak now!';
                 
-                recognition.onresult = function(event) {{
+                recognition.onresult = function(event) {
                     const transcript = event.results[0][0].transcript;
-                    status.innerHTML = '✅ Got it: "' + transcript + '" - Processing...';
+                    status.innerHTML = '✅ You said: "' + transcript + '"<br>🚀 Sending to Kurt...';
                     
-                    // Store result WITHOUT page refresh
-                    sessionStorage.setItem('voiceResult', transcript);
-                    sessionStorage.setItem('voiceTimestamp', Date.now().toString());
-                    
-                    // Try to fill the hidden input directly
-                    const hiddenInput = window.parent.document.querySelector('input[data-testid="textInput-voice_result"]');
-                    if (hiddenInput) {{
-                        hiddenInput.value = transcript;
-                        hiddenInput.dispatchEvent(new Event('input', {{ bubbles: true }}));
-                    }}
-                }};
+                    // Fill the visible text input with the result
+                    setTimeout(() => {
+                        const textInputs = window.parent.document.querySelectorAll('input[type="text"]');
+                        for (let input of textInputs) {
+                            if (input.placeholder && input.placeholder.includes('Speech will appear here')) {
+                                input.value = transcript;
+                                input.dispatchEvent(new Event('input', { bubbles: true }));
+                                
+                                // Auto-click the send button
+                                setTimeout(() => {
+                                    const buttons = window.parent.document.querySelectorAll('button');
+                                    for (let btn of buttons) {
+                                        if (btn.textContent && btn.textContent.includes('Send to Kurt')) {
+                                            btn.click();
+                                            break;
+                                        }
+                                    }
+                                }, 100);
+                                break;
+                            }
+                        }
+                    }, 500);
+                };
                 
-                recognition.onerror = function(event) {{
-                    status.innerHTML = '❌ Error: ' + event.error + ' - Retrying...';
-                    setTimeout(() => {{
-                        recognition.start();
-                    }}, 2000);
-                }};
+                recognition.onerror = function(event) {
+                    status.innerHTML = '❌ Error: ' + event.error;
+                };
                 
                 recognition.start();
-            }}
-            
-            // Check for stored voice result
-            const storedResult = sessionStorage.getItem('voiceResult');
-            const storedTime = sessionStorage.getItem('voiceTimestamp');
-            if (storedResult && storedTime) {{
-                document.getElementById('speech-status').innerHTML = 
-                    '📤 Processing: "' + storedResult + '"';
-            }}
-            </script>
-            """
-            
-            st.components.v1.html(voice_check_html, height=150)
-            
-            # Check for speech result from session storage
-            speech_check_js = """
-            <script>
-            const voiceResult = sessionStorage.getItem('voiceResult');
-            if (voiceResult) {
-                // Clear the stored result
-                sessionStorage.removeItem('voiceResult');
-                sessionStorage.removeItem('voiceTimestamp');
-                
-                // Auto-fill hidden input to trigger processing
-                const hiddenInput = document.querySelector('input[data-testid="textInput-voice_result"]');
-                if (hiddenInput) {
-                    hiddenInput.value = voiceResult;
-                    hiddenInput.dispatchEvent(new Event('input', { bubbles: true }));
-                }
+            } else {
+                document.getElementById('status').innerHTML = '❌ Speech recognition not supported';
             }
             </script>
             """
-            st.components.v1.html(speech_check_js, height=0)
             
-            # Hidden input to capture voice result
-            voice_result = st.text_input("", key="voice_result", label_visibility="hidden")
+            st.components.v1.html(speech_html, height=100)
             
-            # Process voice input automatically
-            if voice_result and voice_result != st.session_state.last_speech:
-                st.session_state.last_speech = voice_result
-                st.session_state.listening_active = False
-                user_input = voice_result
-                send_button = True
+            # Text input that speech will fill
+            user_input = st.text_input("Speech will appear here:", 
+                                       value=st.session_state.speech_input,
+                                       key="speech_text")
+            
+            # Send button that speech will auto-click
+            send_button = st.button("🔊 Send to Kurt", type="primary", key="send_speech")
+            
+            # Handle the send
+            if send_button and user_input:
+                st.session_state.speech_ready = False
+                st.session_state.speech_input = ""
+            elif user_input != st.session_state.speech_input:
+                st.session_state.speech_input = user_input
             else:
                 user_input = ""
                 send_button = False
-                
-            # Stop button
-            if st.button("⏹️ Stop Voice Conversation", key="stop_voice"):
-                st.session_state.listening_active = False
-                st.rerun()
         
     else:
         # Text input mode (existing functionality)
