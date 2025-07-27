@@ -423,13 +423,11 @@ def main():
     
     if conversation_mode == "Audio → Audio":
         # Audio input mode
-        st.markdown("### 🎤 Speak to Kurt")
+        st.markdown("### Audio Conversation Mode")
         
         # Simple text input that works
-        user_input = st.text_input("Type your question:", placeholder="What did you learn from your Dresden experience?", key="audio_input")
+        user_input = st.text_input("Type your question and Kurt will respond with voice:", placeholder="What did you learn from your Dresden experience?", key="audio_input")
         send_button = st.button("Send", type="primary", key="audio_send")
-        
-        st.caption("💡 Audio input via microphone coming soon. For now, type your question and Kurt will respond with voice.")
         
     else:
         # Text input mode (existing functionality)
