@@ -421,25 +421,132 @@ def main():
         # Audio input mode
         st.markdown("### Audio Conversation Mode")
         
-        # Press to talk button
-        col1, col2 = st.columns([1, 3])
-        with col1:
-            if st.button("🎤 Press to Talk", type="primary", key="talk_button"):
-                st.session_state.listening = True
-        with col2:
-            st.caption("Click the microphone to speak to Kurt")
+        # Initialize speech session state
+        if "speech_result" not in st.session_state:
+            st.session_state.speech_result = ""
+        if "auto_submit" not in st.session_state:
+            st.session_state.auto_submit = False
         
-        # Show listening state
-        if "listening" in st.session_state and st.session_state.listening:
-            st.info("🔴 **Listening... speak now!**")
-            st.caption("Say your question out loud, then type what you said below:")
-            st.session_state.listening = False
+        # Press to talk button with real speech recognition
+        if st.button("🎤 Press to Talk", type="primary", key="talk_button"):
+            st.session_state.listening_mode = True
+            st.rerun()
+        
+        # Speech recognition component
+        if "listening_mode" in st.session_state and st.session_state.listening_mode:
+            st.info("🔴 **Click and hold the microphone button in your browser, then speak!**")
             
-        # Text input for what was spoken (or typing)
-        user_input = st.text_input("What did you say? (or just type your question):", placeholder="What did you learn from your Dresden experience?", key="audio_input")
+            # HTML with working speech recognition
+            speech_html = """
+            <div id="speech-container" style="text-align: center; margin: 20px 0;">
+                <button id="start-speech" onclick="startSpeech()" 
+                        style="background-color: #ff4444; color: white; border: none; 
+                               padding: 20px; font-size: 18px; border-radius: 50%; 
+                               width: 80px; height: 80px; cursor: pointer;">
+                    🎤
+                </button>
+                <div id="speech-result" style="margin-top: 15px; padding: 10px; 
+                                             background: rgba(255,255,255,0.1); 
+                                             border-radius: 5px; min-height: 30px;
+                                             color: #F4E8D0; font-family: 'Courier Prime';">
+                    Ready to listen...
+                </div>
+            </div>
+
+            <script>
+            let recognition;
+            let isListening = false;
+
+            function startSpeech() {
+                if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
+                    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+                    recognition = new SpeechRecognition();
+                    
+                    recognition.continuous = false;
+                    recognition.interimResults = false;
+                    recognition.lang = 'en-US';
+                    
+                    const button = document.getElementById('start-speech');
+                    const result = document.getElementById('speech-result');
+                    
+                    if (!isListening) {
+                        isListening = true;
+                        button.style.backgroundColor = '#ff0000';
+                        button.innerHTML = '🔴';
+                        result.innerHTML = 'Listening... speak now!';
+                        
+                        recognition.onresult = function(event) {
+                            const transcript = event.results[0][0].transcript;
+                            result.innerHTML = 'You said: "' + transcript + '"<br>Sending to Kurt...';
+                            
+                            // Send to Streamlit by setting a hidden input and triggering submit
+                            const hiddenInput = document.createElement('input');
+                            hiddenInput.type = 'hidden';
+                            hiddenInput.name = 'speech_input';
+                            hiddenInput.value = transcript;
+                            
+                            // Trigger Streamlit rerun with the speech result
+                            window.parent.postMessage({
+                                type: 'streamlit:setComponentValue',
+                                value: transcript
+                            }, '*');
+                            
+                            isListening = false;
+                            button.style.backgroundColor = '#ff4444';
+                            button.innerHTML = '🎤';
+                        };
+                        
+                        recognition.onerror = function(event) {
+                            result.innerHTML = 'Error: ' + event.error;
+                            isListening = false;
+                            button.style.backgroundColor = '#ff4444';
+                            button.innerHTML = '🎤';
+                        };
+                        
+                        recognition.onend = function() {
+                            if (isListening) {
+                                isListening = false;
+                                button.style.backgroundColor = '#ff4444';
+                                button.innerHTML = '🎤';
+                            }
+                        };
+                        
+                        recognition.start();
+                    } else {
+                        recognition.stop();
+                        isListening = false;
+                        button.style.backgroundColor = '#ff4444';
+                        button.innerHTML = '🎤';
+                        result.innerHTML = 'Stopped listening';
+                    }
+                } else {
+                    document.getElementById('speech-result').innerHTML = 'Speech recognition not supported';
+                }
+            }
+            </script>
+            """
+            
+            st.components.v1.html(speech_html, height=200)
+            
+            # Check for speech result and auto-submit
+            speech_result = st.text_input("Speech will appear here:", value=st.session_state.speech_result, key="speech_display")
+            
+            if speech_result and speech_result != st.session_state.speech_result:
+                st.session_state.speech_result = speech_result
+                st.session_state.auto_submit = True
+                st.session_state.listening_mode = False
+                st.rerun()
         
-        # Send button
-        send_button = st.button("Send to Kurt", type="secondary", key="audio_send")
+        # Handle auto-submit
+        if st.session_state.auto_submit and st.session_state.speech_result:
+            user_input = st.session_state.speech_result
+            send_button = True
+            st.session_state.auto_submit = False
+            st.session_state.speech_result = ""
+        else:
+            # Fallback text input
+            user_input = st.text_input("Or type your question:", placeholder="What did you learn from your Dresden experience?", key="audio_input")
+            send_button = st.button("Send to Kurt", type="secondary", key="audio_send")
         
     else:
         # Text input mode (existing functionality)
