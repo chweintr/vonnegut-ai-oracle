@@ -424,6 +424,8 @@ def main():
         # Initialize speech session state
         if "pending_speech" not in st.session_state:
             st.session_state.pending_speech = ""
+        if "speech_trigger" not in st.session_state:
+            st.session_state.speech_trigger = 0
         
         # Single speech recognition interface
         st.info("🎤 **Click the microphone below and speak to Kurt**")
@@ -467,13 +469,18 @@ def main():
                         const transcript = event.results[0][0].transcript;
                         status.innerHTML = 'You said: "' + transcript + '"<br>Sending to Kurt...';
                         
-                        // Store transcript and trigger reload using URL fragment
+                        // Store in localStorage and trigger manual submission
                         localStorage.setItem('speechResult', transcript);
-                        window.parent.location.hash = 'speech:' + Date.now();
+                        localStorage.setItem('speechTrigger', Date.now().toString());
                         
                         isListening = false;
                         button.style.backgroundColor = '#D2691E';
                         button.innerHTML = '🎤';
+                        
+                        // Show instruction to refresh
+                        setTimeout(() => {{
+                            status.innerHTML = 'Please refresh the page or type your message manually below';
+                        }}, 2000);
                     }};
                     
                     recognition.onerror = function(event) {{
@@ -511,42 +518,33 @@ def main():
         
         st.components.v1.html(speech_html, height=180)
         
-        # Check for speech result from localStorage
-        check_speech_js = """
+        # Check for speech result using JavaScript that doesn't violate security
+        check_speech_js = f"""
         <script>
         const speechResult = localStorage.getItem('speechResult');
-        if (speechResult && window.location.hash.includes('speech:')) {
-            // Found speech result, clear it and submit
+        const speechTrigger = localStorage.getItem('speechTrigger');
+        if (speechResult && speechTrigger) {{
+            // Found speech result, show it
+            document.body.innerHTML += '<div style="background: #2d4a22; color: #90EE90; padding: 10px; margin: 10px; border-radius: 5px; font-family: Courier;">Speech captured: "' + speechResult + '"<br>Copy this text to the input below and click Send.</div>';
             localStorage.removeItem('speechResult');
-            window.location.hash = '';
-            
-            // Auto-fill the input and submit
-            const textInput = document.querySelector('input[data-testid="textInput-speech_input"]');
-            if (textInput) {
-                textInput.value = speechResult;
-                textInput.dispatchEvent(new Event('input', { bubbles: true }));
-                
-                // Force a page reload to trigger submission
-                setTimeout(() => {
-                    window.location.reload();
-                }, 100);
-            }
-        }
+            localStorage.removeItem('speechTrigger');
+        }}
         </script>
         """
         st.components.v1.html(check_speech_js, height=0)
         
-        # Get speech result if available
-        if "speech_result" not in st.session_state:
-            st.session_state.speech_result = ""
-            
-        # Check URL for speech trigger
-        import urllib.parse
-        url_fragment = st.query_params.get("speech", "")
+        # Manual text input for speech result or typing
+        user_input = st.text_input("Type your question (or paste speech result from above):", 
+                                   placeholder="What did you learn from your Dresden experience?", 
+                                   key="speech_input")
         
-        # Simple fallback - just check if we have user input
-        user_input = st.text_input("", placeholder="", key="speech_input", label_visibility="hidden")
-        send_button = user_input != ""  # Auto-send if there's input
+        # Send button
+        col1, col2 = st.columns([1, 3])
+        with col1:
+            send_button = st.button("Send to Kurt", type="primary", key="manual_send")
+        with col2:
+            if user_input:
+                st.caption("✅ Ready to send to Kurt")
         
     else:
         # Text input mode (existing functionality)
