@@ -422,60 +422,24 @@ def main():
         st.markdown("### 🎤 Voice Conversation with Kurt")
         
         try:
-            from streamlit_mic_recorder import speech_to_text, mic_recorder
+            from streamlit_mic_recorder import speech_to_text
             
-            st.info("🎤 **DEBUGGING: Testing different approaches**")
+            st.info("🎤 **Speak to Kurt - he'll respond with voice automatically!**")
             
-            # Method 1: Basic speech_to_text with debugging
-            st.subheader("Method 1: Basic speech_to_text")
-            text1 = speech_to_text(
+            # Use Method 3 configuration (the one that works!)
+            speech_text = speech_to_text(
                 language='en',
-                start_prompt="🎤 Test 1: Click to speak",
-                stop_prompt="⏹️ Stop recording",
-                just_once=False,
-                key="stt_test1"
-            )
-            
-            col1, col2 = st.columns(2)
-            with col1:
-                st.write("Direct return:", text1)
-            with col2:
-                st.write("Session state:", st.session_state.get('stt_test1'))
-                st.write("Output key:", st.session_state.get('stt_test1_output'))
-            
-            # Method 2: Try mic_recorder (audio only)
-            st.subheader("Method 2: Audio recorder only")
-            audio = mic_recorder(
-                start_prompt="🎤 Test 2: Record audio",
-                stop_prompt="⏹️ Stop recording",
-                key="audio_test"
-            )
-            
-            if audio:
-                st.success(f"✅ Audio captured! Size: {len(audio['bytes'])} bytes")
-                st.audio(audio['bytes'])
-            else:
-                st.info("No audio captured yet")
-            
-            # Method 3: Different speech_to_text config
-            st.subheader("Method 3: Different config")
-            text3 = speech_to_text(
-                language='en',
-                start_prompt="🎤 Test 3: Speak now",
-                stop_prompt="⏹️ Done",
+                start_prompt="🎤 Click and Speak to Kurt",
+                stop_prompt="⏹️ Stop Recording",
                 just_once=True,
                 use_container_width=False,
-                key="stt_test3"
+                key="kurt_voice"
             )
             
-            st.write("Method 3 result:", text3)
-            
-            # Check for working speech input
-            working_text = text1 or text3 or st.session_state.get('stt_test1_output') or st.session_state.get('stt_test3_output')
-            
-            if working_text:
-                st.success(f"🎉 SPEECH DETECTED: \"{working_text}\"")
-                user_input = working_text
+            # Auto-submit when speech is detected
+            if speech_text:
+                st.success(f"🎤 You said: \"{speech_text}\" → Sending to Kurt...")
+                user_input = speech_text
                 send_button = True
             else:
                 user_input = ""
