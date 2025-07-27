@@ -486,8 +486,8 @@ def main():
                         form.appendChild(input);
                         document.body.appendChild(form);
                         
-                        // Show manual submission instruction
-                        status.innerHTML = 'Got: "' + transcript + '"<br><strong>Click "Process Speech" below</strong>';
+                        // Show the result for manual copying
+                        status.innerHTML = 'You said: <strong>"' + transcript + '"</strong><br>Copy this text and paste it below!';
                     };
                     
                     recognition.onerror = function(event) {
