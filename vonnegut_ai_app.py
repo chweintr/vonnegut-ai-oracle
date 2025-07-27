@@ -424,26 +424,48 @@ def main():
         try:
             from streamlit_mic_recorder import speech_to_text
             
-            st.info("🎤 **Speak to Kurt - he'll respond with voice automatically!**")
+            st.info("🎤 **Testing both working methods**")
             
-            # Use Method 3 configuration (the one that works!)
-            speech_text = speech_to_text(
+            # Method 1: Auto-submit (this was working for sending)
+            st.subheader("Method 1: Auto-submit version")
+            text1 = speech_to_text(
                 language='en',
-                start_prompt="🎤 Click and Speak to Kurt",
-                stop_prompt="⏹️ Stop Recording",
-                just_once=True,
-                use_container_width=False,
-                key="kurt_voice"
+                start_prompt="🎤 Method 1: Auto-send to Kurt",
+                stop_prompt="⏹️ Stop recording",
+                just_once=False,
+                key="stt_auto"
             )
             
-            # Auto-submit when speech is detected
-            if speech_text:
-                st.success(f"🎤 You said: \"{speech_text}\" → Sending to Kurt...")
-                user_input = speech_text
+            # Method 3: Audio return (this was working for sound)
+            st.subheader("Method 3: Audio return version")
+            text3 = speech_to_text(
+                language='en',
+                start_prompt="🎤 Method 3: Get audio back",
+                stop_prompt="⏹️ Done",
+                just_once=True,
+                use_container_width=False,
+                key="stt_audio"
+            )
+            
+            # Show what each method captures
+            if text1:
+                st.success(f"✅ Method 1 captured: \"{text1}\" - AUTO-SENDING!")
+            if text3:
+                st.success(f"✅ Method 3 captured: \"{text3}\" - AUDIO READY!")
+            
+            # Use whichever method gives us text
+            speech_result = text1 or text3
+            
+            if speech_result:
+                user_input = speech_result
                 send_button = True
             else:
                 user_input = ""
                 send_button = False
+                
+            # Debug output
+            st.write("Method 1 output:", st.session_state.get('stt_auto_output'))
+            st.write("Method 3 output:", st.session_state.get('stt_audio_output'))
                 
         except ImportError:
             st.error("⚠️ streamlit-mic-recorder not installed yet...")
