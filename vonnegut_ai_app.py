@@ -418,114 +418,52 @@ def main():
     send_button = False
     
     if conversation_mode == "Audio → Audio":
-        # FINAL ATTEMPT - Direct integration without iframes
+        # WORKING SOLUTION - Using streamlit-mic-recorder (no iframe restrictions!)
         st.markdown("### 🎤 Voice Conversation with Kurt")
         
-        # Initialize voice state
-        if "voice_transcript" not in st.session_state:
-            st.session_state.voice_transcript = ""
-        if "voice_submitted" not in st.session_state:
-            st.session_state.voice_submitted = False
+        try:
+            from streamlit_mic_recorder import speech_to_text
             
-        # Check if we have a voice result to process
-        if st.session_state.voice_transcript and not st.session_state.voice_submitted:
-            user_input = st.session_state.voice_transcript
-            send_button = True
-            st.session_state.voice_submitted = True
-        else:
-            # Reset for next voice input
-            if st.session_state.voice_submitted:
-                st.session_state.voice_transcript = ""
-                st.session_state.voice_submitted = False
+            st.info("🎤 **Click the microphone below and speak to Kurt - he'll respond automatically!**")
             
-            # Simple voice interface - no complex JavaScript
-            st.info("🎤 **Click below and speak your question to Kurt**")
-            
-            # Ultra-simple speech recognition that updates session state
-            voice_widget = """
-            <div style="text-align: center; margin: 30px 0;">
-                <button onclick="startVoice()" id="voiceBtn"
-                        style="background: #D2691E; color: white; border: none; 
-                               padding: 30px; font-size: 24px; border-radius: 15px; 
-                               cursor: pointer; font-family: 'Courier Prime';">
-                    🎤 Click to Speak
-                </button>
-                <div id="voiceStatus" style="margin-top: 20px; color: #F4E8D0; 
-                                            font-family: 'Courier Prime'; font-size: 16px;">
-                    Ready to listen
-                </div>
-            </div>
-            
-            <script>
-            function startVoice() {
-                const btn = document.getElementById('voiceBtn');
-                const status = document.getElementById('voiceStatus');
-                
-                if ('webkitSpeechRecognition' in window) {
-                    const recognition = new webkitSpeechRecognition();
-                    recognition.continuous = false;
-                    recognition.interimResults = false;
-                    recognition.lang = 'en-US';
-                    
-                    btn.style.background = '#ff0000';
-                    btn.innerHTML = '🔴 Listening...';
-                    status.innerHTML = 'Speak now!';
-                    
-                    recognition.onresult = function(event) {
-                        const transcript = event.results[0][0].transcript;
-                        status.innerHTML = 'You said: "' + transcript + '"';
-                        btn.innerHTML = '✅ Got it!';
-                        btn.style.background = '#28a745';
-                        
-                        // Store in a form that Streamlit can read on next interaction
-                        const form = document.createElement('form');
-                        form.style.display = 'none';
-                        const input = document.createElement('input');
-                        input.name = 'voice_result';
-                        input.value = transcript;
-                        form.appendChild(input);
-                        document.body.appendChild(form);
-                        
-                        // Show the result for manual copying
-                        status.innerHTML = 'You said: <strong>"' + transcript + '"</strong><br>Copy this text and paste it below!';
-                    };
-                    
-                    recognition.onerror = function(event) {
-                        status.innerHTML = 'Error: ' + event.error;
-                        btn.innerHTML = '🎤 Click to Speak';
-                        btn.style.background = '#D2691E';
-                    };
-                    
-                    recognition.onend = function() {
-                        if (btn.innerHTML === '🔴 Listening...') {
-                            btn.innerHTML = '🎤 Click to Speak';
-                            btn.style.background = '#D2691E';
-                            status.innerHTML = 'Ready to listen';
-                        }
-                    };
-                    
-                    recognition.start();
-                } else {
-                    status.innerHTML = 'Speech recognition not supported in this browser';
-                }
-            }
-            </script>
-            """
-            
-            st.components.v1.html(voice_widget, height=150)
-            
-            # Manual input for the speech result
-            voice_input = st.text_input("Your speech will appear here (or type manually):", 
-                                       key="manual_voice_input")
-            
-            # Process button
-            if st.button("🚀 Process Speech", type="primary", key="process_voice"):
-                if voice_input:
-                    st.session_state.voice_transcript = voice_input
+            # Auto-submit callback function
+            def voice_callback():
+                if st.session_state.get('voice_stt_output'):
+                    # Auto-process the speech and trigger Kurt's response
+                    st.session_state.voice_ready = True
                     st.rerun()
-                else:
-                    st.error("Please speak first or type your message")
             
+            # Initialize voice state
+            if "voice_ready" not in st.session_state:
+                st.session_state.voice_ready = False
+            
+            # Speech-to-text component with auto-callback
+            speech_text = speech_to_text(
+                language='en',
+                use_container_width=True, 
+                just_once=True,
+                key='voice_stt',
+                callback=voice_callback
+            )
+            
+            # Check for voice input and auto-submit
+            if st.session_state.voice_ready and st.session_state.get('voice_stt_output'):
+                user_input = st.session_state.voice_stt_output
+                send_button = True
+                st.session_state.voice_ready = False
+                # Clear the output so it doesn't repeat
+                st.session_state.voice_stt_output = ""
+            else:
+                user_input = ""
+                send_button = False
+                
+            # Show what was captured
+            if speech_text:
+                st.success(f"🎤 You said: \"{speech_text}\" - Sending to Kurt...")
+                
+        except ImportError:
+            st.error("⚠️ streamlit-mic-recorder not installed. Installing now...")
+            st.info("Please wait for deployment to complete, then refresh the page.")
             user_input = ""
             send_button = False
         
