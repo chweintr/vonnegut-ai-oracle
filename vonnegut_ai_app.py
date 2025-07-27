@@ -428,7 +428,7 @@ def main():
                     style="background-color: #D2691E; color: #2B1B0A; border: none; 
                            padding: 15px 30px; font-size: 18px; border-radius: 10px; 
                            font-family: 'Courier Prime', monospace; cursor: pointer;">
-                🎤 Hold to Speak
+                🎤 Press to Speak
             </button>
             <div id="voiceResult" style="margin-top: 15px; color: #F4E8D0; 
                                         font-family: 'Courier Prime', monospace;"></div>
@@ -455,25 +455,44 @@ def main():
                     const transcript = event.results[0][0].transcript;
                     result.innerHTML = 'You said: "' + transcript + '"';
                     
-                    // Send to Streamlit
-                    const textInput = window.parent.document.querySelector('input[aria-label="Ask Kurt anything:"]');
-                    if (textInput) {
-                        textInput.value = transcript;
-                        textInput.dispatchEvent(new Event('input', { bubbles: true }));
+                    // Find the correct text input and send button
+                    const textInputs = window.parent.document.querySelectorAll('input[type="text"]');
+                    let targetInput = null;
+                    for (let input of textInputs) {
+                        if (input.placeholder && input.placeholder.includes('Your question will appear here')) {
+                            targetInput = input;
+                            break;
+                        }
                     }
                     
-                    btn.innerHTML = '🎤 Hold to Speak';
+                    if (targetInput) {
+                        targetInput.value = transcript;
+                        targetInput.dispatchEvent(new Event('input', { bubbles: true }));
+                        
+                        // Auto-submit by clicking the send button
+                        setTimeout(() => {
+                            const sendButtons = window.parent.document.querySelectorAll('button');
+                            for (let button of sendButtons) {
+                                if (button.textContent.includes('Send') && !button.disabled) {
+                                    button.click();
+                                    break;
+                                }
+                            }
+                        }, 100);
+                    }
+                    
+                    btn.innerHTML = '🎤 Press to Speak';
                     btn.disabled = false;
                 };
                 
                 recognition.onerror = function(event) {
                     result.innerHTML = 'Error: ' + event.error;
-                    btn.innerHTML = '🎤 Hold to Speak';
+                    btn.innerHTML = '🎤 Press to Speak';
                     btn.disabled = false;
                 };
                 
                 recognition.onend = function() {
-                    btn.innerHTML = '🎤 Hold to Speak';
+                    btn.innerHTML = '🎤 Press to Speak';
                     btn.disabled = false;
                 };
                 
