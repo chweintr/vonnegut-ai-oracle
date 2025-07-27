@@ -357,10 +357,6 @@ def main():
     # Initialize session state
     if "conversation_history" not in st.session_state:
         st.session_state.conversation_history = []
-    if "voice_input" not in st.session_state:
-        st.session_state.voice_input = ""
-    if "submit_voice" not in st.session_state:
-        st.session_state.submit_voice = False
     
     # Sidebar
     with st.sidebar:
@@ -441,12 +437,9 @@ def main():
         with col2:
             st.caption("💭 Kurt will respond in your selected mode")
     
-    # Check for voice input from session state
-    if st.session_state.submit_voice and st.session_state.voice_input:
-        user_input = st.session_state.voice_input
-        st.session_state.submit_voice = False
-        st.session_state.voice_input = ""
-        send_button = True
+    # Debug info
+    if conversation_mode == "Audio → Audio":
+        st.caption(f"Debug: Button clicked: {send_button}, Input: '{user_input}'")
     
     if send_button and user_input:
         # Add user message to history
