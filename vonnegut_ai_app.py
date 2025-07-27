@@ -418,102 +418,116 @@ def main():
     send_button = False
     
     if conversation_mode == "Audio → Audio":
-        # Simple voice conversation that actually works
+        # FINAL ATTEMPT - Direct integration without iframes
         st.markdown("### 🎤 Voice Conversation with Kurt")
         
-        # Initialize speech state
-        if "speech_input" not in st.session_state:
-            st.session_state.speech_input = ""
-        if "speech_ready" not in st.session_state:
-            st.session_state.speech_ready = False
+        # Initialize voice state
+        if "voice_transcript" not in st.session_state:
+            st.session_state.voice_transcript = ""
+        if "voice_submitted" not in st.session_state:
+            st.session_state.voice_submitted = False
             
-        # Simple one-button speech interface
-        if st.button("🎤 Click and Speak", type="primary", key="speak_now"):
-            st.session_state.speech_ready = True
-            st.rerun()
-        
-        # If ready to listen, show speech interface
-        if st.session_state.speech_ready:
-            st.info("🔴 **Speak now!** Your speech will automatically send to Kurt")
+        # Check if we have a voice result to process
+        if st.session_state.voice_transcript and not st.session_state.voice_submitted:
+            user_input = st.session_state.voice_transcript
+            send_button = True
+            st.session_state.voice_submitted = True
+        else:
+            # Reset for next voice input
+            if st.session_state.voice_submitted:
+                st.session_state.voice_transcript = ""
+                st.session_state.voice_submitted = False
             
-            # Simple working speech recognition
-            speech_html = """
-            <div style="text-align: center; margin: 20px;">
-                <div id="status" style="color: #F4E8D0; font-family: 'Courier Prime'; font-size: 18px; margin-bottom: 15px;">
-                    Starting microphone...
+            # Simple voice interface - no complex JavaScript
+            st.info("🎤 **Click below and speak your question to Kurt**")
+            
+            # Ultra-simple speech recognition that updates session state
+            voice_widget = """
+            <div style="text-align: center; margin: 30px 0;">
+                <button onclick="startVoice()" id="voiceBtn"
+                        style="background: #D2691E; color: white; border: none; 
+                               padding: 30px; font-size: 24px; border-radius: 15px; 
+                               cursor: pointer; font-family: 'Courier Prime';">
+                    🎤 Click to Speak
+                </button>
+                <div id="voiceStatus" style="margin-top: 20px; color: #F4E8D0; 
+                                            font-family: 'Courier Prime'; font-size: 16px;">
+                    Ready to listen
                 </div>
-                <button id="mic-btn" style="display: none;">🎤</button>
             </div>
             
             <script>
-            // Auto-start speech recognition immediately
-            if ('webkitSpeechRecognition' in window) {
-                const recognition = new webkitSpeechRecognition();
-                recognition.continuous = false;
-                recognition.interimResults = false;
-                recognition.lang = 'en-US';
+            function startVoice() {
+                const btn = document.getElementById('voiceBtn');
+                const status = document.getElementById('voiceStatus');
                 
-                const status = document.getElementById('status');
-                status.innerHTML = '🔴 LISTENING... speak now!';
-                
-                recognition.onresult = function(event) {
-                    const transcript = event.results[0][0].transcript;
-                    status.innerHTML = '✅ You said: "' + transcript + '"<br>🚀 Sending to Kurt...';
+                if ('webkitSpeechRecognition' in window) {
+                    const recognition = new webkitSpeechRecognition();
+                    recognition.continuous = false;
+                    recognition.interimResults = false;
+                    recognition.lang = 'en-US';
                     
-                    // Fill the visible text input with the result
-                    setTimeout(() => {
-                        const textInputs = window.parent.document.querySelectorAll('input[type="text"]');
-                        for (let input of textInputs) {
-                            if (input.placeholder && input.placeholder.includes('Speech will appear here')) {
-                                input.value = transcript;
-                                input.dispatchEvent(new Event('input', { bubbles: true }));
-                                
-                                // Auto-click the send button
-                                setTimeout(() => {
-                                    const buttons = window.parent.document.querySelectorAll('button');
-                                    for (let btn of buttons) {
-                                        if (btn.textContent && btn.textContent.includes('Send to Kurt')) {
-                                            btn.click();
-                                            break;
-                                        }
-                                    }
-                                }, 100);
-                                break;
-                            }
+                    btn.style.background = '#ff0000';
+                    btn.innerHTML = '🔴 Listening...';
+                    status.innerHTML = 'Speak now!';
+                    
+                    recognition.onresult = function(event) {
+                        const transcript = event.results[0][0].transcript;
+                        status.innerHTML = 'You said: "' + transcript + '"';
+                        btn.innerHTML = '✅ Got it!';
+                        btn.style.background = '#28a745';
+                        
+                        // Store in a form that Streamlit can read on next interaction
+                        const form = document.createElement('form');
+                        form.style.display = 'none';
+                        const input = document.createElement('input');
+                        input.name = 'voice_result';
+                        input.value = transcript;
+                        form.appendChild(input);
+                        document.body.appendChild(form);
+                        
+                        // Show manual submission instruction
+                        status.innerHTML = 'Got: "' + transcript + '"<br><strong>Click "Process Speech" below</strong>';
+                    };
+                    
+                    recognition.onerror = function(event) {
+                        status.innerHTML = 'Error: ' + event.error;
+                        btn.innerHTML = '🎤 Click to Speak';
+                        btn.style.background = '#D2691E';
+                    };
+                    
+                    recognition.onend = function() {
+                        if (btn.innerHTML === '🔴 Listening...') {
+                            btn.innerHTML = '🎤 Click to Speak';
+                            btn.style.background = '#D2691E';
+                            status.innerHTML = 'Ready to listen';
                         }
-                    }, 500);
-                };
-                
-                recognition.onerror = function(event) {
-                    status.innerHTML = '❌ Error: ' + event.error;
-                };
-                
-                recognition.start();
-            } else {
-                document.getElementById('status').innerHTML = '❌ Speech recognition not supported';
+                    };
+                    
+                    recognition.start();
+                } else {
+                    status.innerHTML = 'Speech recognition not supported in this browser';
+                }
             }
             </script>
             """
             
-            st.components.v1.html(speech_html, height=100)
+            st.components.v1.html(voice_widget, height=150)
             
-            # Text input that speech will fill
-            user_input = st.text_input("Speech will appear here:", 
-                                       value=st.session_state.speech_input,
-                                       key="speech_text")
+            # Manual input for the speech result
+            voice_input = st.text_input("Your speech will appear here (or type manually):", 
+                                       key="manual_voice_input")
             
-            # Send button that speech will auto-click
-            send_button = st.button("🔊 Send to Kurt", type="primary", key="send_speech")
+            # Process button
+            if st.button("🚀 Process Speech", type="primary", key="process_voice"):
+                if voice_input:
+                    st.session_state.voice_transcript = voice_input
+                    st.rerun()
+                else:
+                    st.error("Please speak first or type your message")
             
-            # Handle the send
-            if send_button and user_input:
-                st.session_state.speech_ready = False
-                st.session_state.speech_input = ""
-            elif user_input != st.session_state.speech_input:
-                st.session_state.speech_input = user_input
-            else:
-                user_input = ""
-                send_button = False
+            user_input = ""
+            send_button = False
         
     else:
         # Text input mode (existing functionality)
