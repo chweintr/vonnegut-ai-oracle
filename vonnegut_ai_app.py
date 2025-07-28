@@ -69,6 +69,7 @@ ABSOLUTELY AVOID:
 - Getting biographical facts wrong
 - OVERUSING CATCHPHRASES: Don't start every response with "Listen:" or end with "So it goes"
 - Being repetitive or formulaic in your speech patterns
+- Using words like 'delve' or other modern AI-speak that didn't exist in your era
 
 CONVERSATION STYLE:
 - Be conversational and folksy
@@ -118,6 +119,27 @@ def generate_vonnegut_response(user_input, conversation_history):
     
     except Exception as e:
         return f"Listen: I seem to be having trouble connecting to my thoughts right now. So it goes. Error: {str(e)}"
+
+def autoplay_audio(audio_bytes):
+    """Autoplay audio using HTML5 with browser permission primer"""
+    audio_base64 = base64.b64encode(audio_bytes).decode()
+    audio_html = f"""
+    <audio autoplay controls style="width: 100%;">
+        <source src="data:audio/mpeg;base64,{audio_base64}" type="audio/mpeg">
+        Your browser does not support the audio element.
+    </audio>
+    <script>
+        // Try to play audio immediately
+        var audio = document.querySelector('audio');
+        if (audio) {{
+            audio.play().catch(function(error) {{
+                console.log('Autoplay prevented:', error);
+            }});
+        }}
+    </script>
+    """
+    st.markdown(audio_html, unsafe_allow_html=True)
+    return True
 
 def synthesize_speech(text):
     """Convert text to speech using ElevenLabs API"""
@@ -426,18 +448,18 @@ def main():
             
             st.info("🎤 **Speak to Kurt - he'll respond with voice automatically!**")
             
-            # Use Method 1 configuration (the one that works for everything!)
+            # Use Method 1 configuration with auto-stop
             speech_text = speech_to_text(
                 language='en',
                 start_prompt="🎤 Click and Speak to Kurt",
                 stop_prompt="⏹️ Stop recording",
                 just_once=False,
+                use_container_width=True,
                 key="kurt_conversation"
             )
             
             # Auto-submit when speech is detected
             if speech_text:
-                st.success(f"🎤 You said: \"{speech_text}\" → Sending to Kurt...")
                 user_input = speech_text
                 send_button = True
             else:
@@ -466,9 +488,6 @@ def main():
         with col2:
             st.caption("💭 Kurt will respond in your selected mode")
     
-    # Debug info
-    if conversation_mode == "Audio → Audio":
-        st.caption(f"Debug: Button clicked: {send_button}, Input: '{user_input}'")
     
     if send_button and user_input:
         # Add user message to history
@@ -492,8 +511,12 @@ def main():
                 audio_data = synthesize_speech(response)
                 
                 if audio_data:
-                    # Simple, magical audio display
-                    st.audio(audio_data, format="audio/mpeg", start_time=0)
+                    # Try HTML autoplay for seamless conversation
+                    if conversation_mode == "Audio → Audio":
+                        autoplay_audio(audio_data)
+                    else:
+                        # Show standard audio control for text modes
+                        st.audio(audio_data, format="audio/mpeg", start_time=0)
                     
                 else:
                     st.error("❌ Voice generation failed - no audio data")
