@@ -121,19 +121,25 @@ def generate_vonnegut_response(user_input, conversation_history):
         return f"Listen: I seem to be having trouble connecting to my thoughts right now. So it goes. Error: {str(e)}"
 
 def autoplay_audio(audio_bytes):
-    """Autoplay audio using HTML5 with browser permission primer"""
+    """Autoplay audio using HTML5 with auto-restart for conversation"""
     audio_base64 = base64.b64encode(audio_bytes).decode()
     audio_html = f"""
-    <audio autoplay controls style="width: 100%;">
+    <audio id="kurt_audio" autoplay controls style="width: 100%;">
         <source src="data:audio/mpeg;base64,{audio_base64}" type="audio/mpeg">
         Your browser does not support the audio element.
     </audio>
     <script>
-        // Try to play audio immediately
-        var audio = document.querySelector('audio');
+        // Auto-play and prepare for next turn
+        var audio = document.getElementById('kurt_audio');
         if (audio) {{
             audio.play().catch(function(error) {{
                 console.log('Autoplay prevented:', error);
+            }});
+            
+            // When audio ends, could trigger next recording
+            audio.addEventListener('ended', function() {{
+                console.log('Kurt finished speaking');
+                // Ready for next input
             }});
         }}
     </script>
@@ -379,6 +385,10 @@ def main():
     # Initialize session state
     if "conversation_history" not in st.session_state:
         st.session_state.conversation_history = []
+    if "is_recording" not in st.session_state:
+        st.session_state.is_recording = False
+    if "voice_key" not in st.session_state:
+        st.session_state.voice_key = 0
     
     # Sidebar
     with st.sidebar:
@@ -440,28 +450,47 @@ def main():
     send_button = False
     
     if conversation_mode == "Audio → Audio":
-        # WORKING SOLUTION - Using streamlit-mic-recorder (no iframe restrictions!)
+        # ENHANCED CONTINUOUS CONVERSATION
         st.markdown("### 🎤 Voice Conversation with Kurt")
         
         try:
             from streamlit_mic_recorder import speech_to_text
             
-            st.info("🎤 **Speak to Kurt - he'll respond with voice automatically!**")
+            # Toggle conversation button
+            col1, col2 = st.columns([1, 3])
+            with col1:
+                if st.button("🎤 Toggle Conversation" if not st.session_state.is_recording else "⏹️ End Conversation", 
+                            type="primary" if not st.session_state.is_recording else "secondary"):
+                    st.session_state.is_recording = not st.session_state.is_recording
+                    st.session_state.voice_key += 1
+                    st.rerun()
             
-            # Use Method 1 configuration with auto-stop
-            speech_text = speech_to_text(
-                language='en',
-                start_prompt="🎤 Click and Speak to Kurt",
-                stop_prompt="⏹️ Stop recording",
-                just_once=False,
-                use_container_width=True,
-                key="kurt_conversation"
-            )
+            with col2:
+                if st.session_state.is_recording:
+                    st.success("🔴 **Conversation Active** - Speak naturally!")
+                else:
+                    st.info("💤 Click to start talking with Kurt")
             
-            # Auto-submit when speech is detected
-            if speech_text:
-                user_input = speech_text
-                send_button = True
+            # Only show recorder when conversation is active
+            if st.session_state.is_recording:
+                speech_text = speech_to_text(
+                    language='en',
+                    start_prompt="🎤 Listening...",
+                    stop_prompt="",  # Hide stop button for cleaner UI
+                    just_once=True,  # Auto-stop on silence
+                    use_container_width=False,
+                    key=f"voice_{st.session_state.voice_key}"
+                )
+                
+                # Auto-submit when speech is detected
+                if speech_text:
+                    user_input = speech_text
+                    send_button = True
+                    # Increment key for next recording
+                    st.session_state.voice_key += 1
+                else:
+                    user_input = ""
+                    send_button = False
             else:
                 user_input = ""
                 send_button = False
@@ -514,6 +543,10 @@ def main():
                     # Try HTML autoplay for seamless conversation
                     if conversation_mode == "Audio → Audio":
                         autoplay_audio(audio_data)
+                        # Keep conversation going if toggle is on
+                        if st.session_state.is_recording:
+                            time.sleep(0.5)  # Brief pause before next recording
+                            st.rerun()
                     else:
                         # Show standard audio control for text modes
                         st.audio(audio_data, format="audio/mpeg", start_time=0)
