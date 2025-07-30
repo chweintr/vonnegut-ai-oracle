@@ -466,9 +466,6 @@ def main():
         with col2:
             st.caption("💭 Kurt will respond in your selected mode")
     
-    # Debug info
-    if conversation_mode == "Audio → Audio":
-        st.caption(f"Debug: Button clicked: {send_button}, Input: '{user_input}'")
     
     if send_button and user_input:
         # Add user message to history
