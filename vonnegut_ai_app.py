@@ -69,7 +69,6 @@ ABSOLUTELY AVOID:
 - Getting biographical facts wrong
 - OVERUSING CATCHPHRASES: Don't start every response with "Listen:" or end with "So it goes"
 - Being repetitive or formulaic in your speech patterns
-- Using words like 'delve' or other modern AI-speak that didn't exist in your era
 
 CONVERSATION STYLE:
 - Be conversational and folksy
@@ -119,33 +118,6 @@ def generate_vonnegut_response(user_input, conversation_history):
     
     except Exception as e:
         return f"Listen: I seem to be having trouble connecting to my thoughts right now. So it goes. Error: {str(e)}"
-
-def autoplay_audio(audio_bytes):
-    """Autoplay audio using HTML5 with auto-restart for conversation"""
-    audio_base64 = base64.b64encode(audio_bytes).decode()
-    audio_html = f"""
-    <audio id="kurt_audio" autoplay controls style="width: 100%;">
-        <source src="data:audio/mpeg;base64,{audio_base64}" type="audio/mpeg">
-        Your browser does not support the audio element.
-    </audio>
-    <script>
-        // Auto-play and prepare for next turn
-        var audio = document.getElementById('kurt_audio');
-        if (audio) {{
-            audio.play().catch(function(error) {{
-                console.log('Autoplay prevented:', error);
-            }});
-            
-            // When audio ends, could trigger next recording
-            audio.addEventListener('ended', function() {{
-                console.log('Kurt finished speaking');
-                // Ready for next input
-            }});
-        }}
-    </script>
-    """
-    st.markdown(audio_html, unsafe_allow_html=True)
-    return True
 
 def synthesize_speech(text):
     """Convert text to speech using ElevenLabs API"""
@@ -385,10 +357,6 @@ def main():
     # Initialize session state
     if "conversation_history" not in st.session_state:
         st.session_state.conversation_history = []
-    if "is_recording" not in st.session_state:
-        st.session_state.is_recording = False
-    if "voice_key" not in st.session_state:
-        st.session_state.voice_key = 0
     
     # Sidebar
     with st.sidebar:
@@ -450,47 +418,28 @@ def main():
     send_button = False
     
     if conversation_mode == "Audio → Audio":
-        # ENHANCED CONTINUOUS CONVERSATION
+        # WORKING SOLUTION - Using streamlit-mic-recorder (no iframe restrictions!)
         st.markdown("### 🎤 Voice Conversation with Kurt")
         
         try:
             from streamlit_mic_recorder import speech_to_text
             
-            # Toggle conversation button
-            col1, col2 = st.columns([1, 3])
-            with col1:
-                if st.button("🎤 Toggle Conversation" if not st.session_state.is_recording else "⏹️ End Conversation", 
-                            type="primary" if not st.session_state.is_recording else "secondary"):
-                    st.session_state.is_recording = not st.session_state.is_recording
-                    st.session_state.voice_key += 1
-                    st.rerun()
+            st.info("🎤 **Speak to Kurt - he'll respond with voice automatically!**")
             
-            with col2:
-                if st.session_state.is_recording:
-                    st.success("🔴 **Conversation Active** - Speak naturally!")
-                else:
-                    st.info("💤 Click to start talking with Kurt")
+            # Use Method 1 configuration (the one that works for everything!)
+            speech_text = speech_to_text(
+                language='en',
+                start_prompt="🎤 Click and Speak to Kurt",
+                stop_prompt="⏹️ Stop recording",
+                just_once=False,
+                key="kurt_conversation"
+            )
             
-            # Only show recorder when conversation is active
-            if st.session_state.is_recording:
-                speech_text = speech_to_text(
-                    language='en',
-                    start_prompt="🎤 Listening...",
-                    stop_prompt="",  # Hide stop button for cleaner UI
-                    just_once=True,  # Auto-stop on silence
-                    use_container_width=False,
-                    key=f"voice_{st.session_state.voice_key}"
-                )
-                
-                # Auto-submit when speech is detected
-                if speech_text:
-                    user_input = speech_text
-                    send_button = True
-                    # Increment key for next recording
-                    st.session_state.voice_key += 1
-                else:
-                    user_input = ""
-                    send_button = False
+            # Auto-submit when speech is detected
+            if speech_text:
+                st.success(f"🎤 You said: \"{speech_text}\" → Sending to Kurt...")
+                user_input = speech_text
+                send_button = True
             else:
                 user_input = ""
                 send_button = False
@@ -517,6 +466,9 @@ def main():
         with col2:
             st.caption("💭 Kurt will respond in your selected mode")
     
+    # Debug info
+    if conversation_mode == "Audio → Audio":
+        st.caption(f"Debug: Button clicked: {send_button}, Input: '{user_input}'")
     
     if send_button and user_input:
         # Add user message to history
@@ -540,16 +492,8 @@ def main():
                 audio_data = synthesize_speech(response)
                 
                 if audio_data:
-                    # Try HTML autoplay for seamless conversation
-                    if conversation_mode == "Audio → Audio":
-                        autoplay_audio(audio_data)
-                        # Keep conversation going if toggle is on
-                        if st.session_state.is_recording:
-                            time.sleep(0.5)  # Brief pause before next recording
-                            st.rerun()
-                    else:
-                        # Show standard audio control for text modes
-                        st.audio(audio_data, format="audio/mpeg", start_time=0)
+                    # Simple, magical audio display
+                    st.audio(audio_data, format="audio/mpeg", start_time=0)
                     
                 else:
                     st.error("❌ Voice generation failed - no audio data")

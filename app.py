@@ -42,15 +42,16 @@ CORE PERSONALITY TRAITS:
 - Pessimistic about humanity but advocated kindness
 - Fiercely anti-war due to Dresden POW experience
 
-SPEAKING PATTERNS - USE THESE RELIGIOUSLY:
-- Start important points with "Listen:"
-- Use "So it goes" after mentions of death or tragedy
-- Use "I tell you..." for emphasis
-- Say "My God, my God..." when shocked
-- Use "Hi ho" as casual greeting/resignation
-- Midwestern, conversational, unpretentious tone
+SPEAKING PATTERNS - USE SPARINGLY AND NATURALLY:
+- Occasionally start important points with "Listen:" (not every response)
+- Use "So it goes" ONLY after mentions of death or genuine tragedy (maybe once per conversation)
+- Sometimes use "I tell you..." for emphasis (not frequently)
+- Rarely say "My God, my God..." when truly shocked
+- Occasionally use "Hi ho" as casual greeting/resignation
+- Midwestern, conversational, unpretentious tone always
 - Self-interrupting, rambling style that circles back to main points
-- Often quote Uncle Alex's happiness advice
+- Sometimes quote Uncle Alex's happiness advice when relevant
+- VARY YOUR OPENINGS: start with different phrases, questions, observations
 
 CORE PHILOSOPHY TO EXPRESS:
 - "We are what we pretend to be, so we must be careful about what we pretend to be"
@@ -66,6 +67,8 @@ ABSOLUTELY AVOID:
 - Being preachy or self-important
 - Modern internet slang or references past 2007
 - Getting biographical facts wrong
+- OVERUSING CATCHPHRASES: Don't start every response with "Listen:" or end with "So it goes"
+- Being repetitive or formulaic in your speech patterns
 
 CONVERSATION STYLE:
 - Be conversational and folksy
@@ -73,6 +76,9 @@ CONVERSATION STYLE:
 - Share personal anecdotes and observations
 - Be self-deprecating about your fame
 - Show concern for the underprivileged and marginalized
+- VARY YOUR RESPONSES: Don't always start the same way
+- Sometimes be direct, sometimes rambling, sometimes philosophical
+- React naturally to what the human is asking rather than following a formula
 
 ADAPTIVE RESPONSES:
 Respond naturally based on the question asked:
@@ -116,6 +122,7 @@ def generate_vonnegut_response(user_input, conversation_history):
 def synthesize_speech(text):
     """Convert text to speech using ElevenLabs API"""
     if not ELEVENLABS_API_KEY or not ELEVENLABS_VOICE_ID:
+        st.error("🚫 Missing ElevenLabs credentials")
         return None
     
     url = f"https://api.elevenlabs.io/v1/text-to-speech/{ELEVENLABS_VOICE_ID}"
@@ -128,7 +135,7 @@ def synthesize_speech(text):
     
     data = {
         "text": text,
-        "model_id": "eleven_monolingual_v1",
+        "model_id": "eleven_monolingual_v1", 
         "voice_settings": {
             "stability": 0.5,
             "similarity_boost": 0.75
@@ -136,14 +143,15 @@ def synthesize_speech(text):
     }
     
     try:
-        response = requests.post(url, json=data, headers=headers)
+        response = requests.post(url, json=data, headers=headers, timeout=30)
+        
         if response.status_code == 200:
             return response.content
         else:
-            st.error(f"ElevenLabs API error: {response.status_code}")
+            st.error(f"❌ ElevenLabs API error: {response.status_code} - {response.text}")
             return None
     except Exception as e:
-        st.error(f"Error synthesizing speech: {str(e)}")
+        st.error(f"💥 Error calling ElevenLabs: {str(e)}")
         return None
 
 def main():
@@ -160,32 +168,46 @@ def main():
     <style>
     @import url('https://fonts.googleapis.com/css2?family=Courier+Prime:wght@400;700&display=swap');
     
-    /* Video Background */
+    /* Video Background - NEGATIVE z-index puts it behind everything */
     .video-background {
         position: fixed;
         top: 0;
         left: 0;
-        width: 150%;
-        height: 150%;
-        z-index: -1;
-        object-fit: cover;
+        width: 100vw;
+        height: 100vh;
+        z-index: -1;          /* NEGATIVE - BEHIND EVERYTHING */
+        overflow: hidden;
         opacity: 0.3;
         filter: sepia(60%) hue-rotate(20deg) saturate(0.7) brightness(1.1) contrast(0.7);
         pointer-events: none;
     }
     
-    .main {
-        position: relative;
-        z-index: 50;
-        background-color: rgba(43, 27, 10, 0.8);
-        color: #F4E8D0 !important;
+    /* Force all Streamlit content above video */
+    .stApp > div, .main, .block-container {
+        position: relative !important;
+        z-index: 50 !important;    /* POSITIVE - ABOVE VIDEO */
+        background: rgba(43, 27, 10, 0.1);
+        font-family: 'Courier Prime', monospace;
     }
     
-    .stApp {
-        position: relative;
-        z-index: 50;
-        background: linear-gradient(180deg, rgba(43, 27, 10, 0.9) 0%, rgba(61, 41, 20, 0.8) 100%);
-        font-family: 'Courier Prime', monospace;
+    /* Response boxes above video */
+    .stMarkdown, .stColumns, .element-container {
+        position: relative !important;
+        z-index: 55 !important;    /* ABOVE VIDEO */
+    }
+    
+    /* Input fields highest priority */
+    .stTextInput {
+        position: relative !important;
+        z-index: 60 !important;    /* HIGHER - ABOVE EVERYTHING */
+    }
+    
+    /* Sidebar above video */
+    section[data-testid="stSidebar"] {
+        position: relative !important;
+        z-index: 70 !important;    /* HIGHEST - ABOVE EVERYTHING */
+        background: rgba(240, 242, 246, 0.9) !important;
+        backdrop-filter: blur(10px);
     }
     
     /* Main content area - light text on dark background */
@@ -308,19 +330,8 @@ def main():
     
     <!-- Video Background -->
     <iframe 
+        class="video-background"
         src="https://www.youtube.com/embed/Rx1axzijDxY?autoplay=1&mute=1&loop=1&playlist=Rx1axzijDxY&controls=0&showinfo=0&rel=0&iv_load_policy=3&modestbranding=1&playsinline=1&playback_rate=0.75"
-        style="
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 150%;
-            height: 150%;
-            z-index: -1;
-            border: none;
-            pointer-events: none;
-            opacity: 0.3;
-            filter: sepia(60%) hue-rotate(20deg) saturate(0.7) brightness(1.1) contrast(0.7);
-        "
         allow="autoplay; encrypted-media"
         allowfullscreen>
     </iframe>
@@ -384,18 +395,80 @@ def main():
             </div>
             """, unsafe_allow_html=True)
     
-    # User input
-    user_input = st.text_input("Ask Kurt anything:", placeholder="What's your take on the meaning of life?")
+    # Conversation mode selector
+    col_mode1, col_mode2 = st.columns([2, 3])
     
-    col1, col2 = st.columns([1, 4])
+    with col_mode1:
+        conversation_mode = st.selectbox(
+            "Conversation mode:",
+            options=["Text → Text", "Text → Audio", "Audio → Audio"],
+            index=1 if (ELEVENLABS_API_KEY and ELEVENLABS_VOICE_ID) else 0
+        )
     
-    with col1:
-        send_button = st.button("Send", type="primary")
+    with col_mode2:
+        if conversation_mode == "Audio → Audio":
+            st.caption("🎤 Click to speak → Kurt responds with voice")
+        elif conversation_mode == "Text → Audio":
+            st.caption("⌨️ Type your message → Kurt responds with voice")
+        else:
+            st.caption("⌨️ Type your message → Kurt responds with text")
     
-    with col2:
-        voice_enabled = st.checkbox("🔊 Enable Vonnegut voice output", value=bool(ELEVENLABS_API_KEY and ELEVENLABS_VOICE_ID))
-        if voice_enabled:
-            st.caption("💬 Type your message → Kurt responds with voice")
+    # User input based on mode
+    user_input = ""
+    send_button = False
+    
+    if conversation_mode == "Audio → Audio":
+        # WORKING SOLUTION - Using streamlit-mic-recorder (no iframe restrictions!)
+        st.markdown("### 🎤 Voice Conversation with Kurt")
+        
+        try:
+            from streamlit_mic_recorder import speech_to_text
+            
+            st.info("🎤 **Speak to Kurt - he'll respond with voice automatically!**")
+            
+            # Use Method 1 configuration (the one that works for everything!)
+            speech_text = speech_to_text(
+                language='en',
+                start_prompt="🎤 Click and Speak to Kurt",
+                stop_prompt="⏹️ Stop recording",
+                just_once=False,
+                key="kurt_conversation"
+            )
+            
+            # Auto-submit when speech is detected
+            if speech_text:
+                st.success(f"🎤 You said: \"{speech_text}\" → Sending to Kurt...")
+                user_input = speech_text
+                send_button = True
+            else:
+                user_input = ""
+                send_button = False
+                
+        except ImportError:
+            st.error("⚠️ streamlit-mic-recorder not installed yet...")
+            st.info("Installing... please refresh in 1-2 minutes")
+            user_input = ""
+            send_button = False
+        except Exception as e:
+            st.error(f"Error with mic recorder: {str(e)}")
+            user_input = ""
+            send_button = False
+        
+    else:
+        # Text input mode (existing functionality)
+        user_input = st.text_input("Ask Kurt anything:", placeholder="What did you learn from your Dresden experience?")
+        
+        col1, col2 = st.columns([1, 4])
+        
+        with col1:
+            send_button = st.button("Send", type="primary")
+        
+        with col2:
+            st.caption("💭 Kurt will respond in your selected mode")
+    
+    # Debug info
+    if conversation_mode == "Audio → Audio":
+        st.caption(f"Debug: Button clicked: {send_button}, Input: '{user_input}'")
     
     if send_button and user_input:
         # Add user message to history
@@ -411,20 +484,29 @@ def main():
         # Add response to history
         st.session_state.conversation_history.append({"role": "assistant", "content": response})
         
-        # Synthesize speech if enabled
-        if voice_enabled and ELEVENLABS_API_KEY and ELEVENLABS_VOICE_ID:
-            with st.spinner("Generating voice..."):
-                audio_data = synthesize_speech(response)
-                if audio_data:
-                    st.audio(audio_data, format="audio/mpeg")
+        # Synthesize speech based on conversation mode
+        voice_output_enabled = (conversation_mode in ["Text → Audio", "Audio → Audio"]) and ELEVENLABS_API_KEY and ELEVENLABS_VOICE_ID
         
-        st.rerun()
+        if voice_output_enabled:
+            with st.spinner("*"):
+                audio_data = synthesize_speech(response)
+                
+                if audio_data:
+                    # Simple, magical audio display
+                    st.audio(audio_data, format="audio/mpeg", start_time=0)
+                    
+                else:
+                    st.error("❌ Voice generation failed - no audio data")
+        
+        # Only rerun if no voice was generated to avoid wiping audio player
+        if not voice_output_enabled:
+            st.rerun()
     
     # Footer
     st.markdown("---")
     st.markdown("""
     <div style="text-align: center; color: #CD853F; font-style: italic;">
-    "So it goes." - Built with love for literature and human kindness
+    "So it goes." - Built with love for literature and human kindness - v2.0
     </div>
     """, unsafe_allow_html=True)
 
