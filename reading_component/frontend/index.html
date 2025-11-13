@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <title>Interactive Reading Pane</title>
+    <script src="https://unpkg.com/streamlit-component-lib/dist/index.js"></script>
+    <style>
+        :root {
+            font-family: "Source Serif Pro", "Georgia", serif;
+            color: #f8efd5;
+            background: rgba(22, 12, 6, 0.9);
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            background: transparent;
+        }
+
+        .reading-pane-wrapper {
+            position: relative;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 14px;
+            padding: 1.2rem;
+            background: rgba(22, 12, 6, 0.78);
+            max-height: 520px;
+            min-height: 520px;
+            overflow-y: auto;
+            box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.03);
+        }
+
+        .reading-pane-wrapper::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        .reading-pane-wrapper::-webkit-scrollbar-thumb {
+            background-color: rgba(210, 105, 30, 0.5);
+            border-radius: 4px;
+        }
+
+        .interactive-reading {
+            color: #f8efd5;
+            line-height: 1.5;
+            font-size: 0.95rem;
+            white-space: normal;
+        }
+
+        .selection-toolbar {
+            position: absolute;
+            display: flex;
+            gap: 0.45rem;
+            background: #fef1da;
+            color: #321a0a;
+            padding: 0.35rem 0.6rem;
+            border-radius: 999px;
+            box-shadow: 0 12px 30px rgba(0, 0, 0, 0.35);
+            transform: translate(-50%, -120%);
+            z-index: 90;
+            transition: opacity 0.15s ease;
+        }
+
+        .selection-toolbar button {
+            border: none;
+            background: transparent;
+            color: #321a0a;
+            font-weight: 700;
+            cursor: pointer;
+        }
+
+        .selection-toolbar button:hover {
+            text-decoration: underline;
+        }
+
+        .selection-hidden {
+            opacity: 0;
+            pointer-events: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="reading-pane-wrapper">
+        <div id="reading-pane" class="interactive-reading"></div>
+        <div id="selection-toolbar" class="selection-toolbar selection-hidden">
+            <button data-action="ask">Ask Kurt</button>
+            <button data-action="themes">Themes</button>
+        </div>
+    </div>
+
+    <script>
+        (function () {
+            const StreamlitLib = window.Streamlit || null;
+            const readingPane = document.getElementById("reading-pane");
+            const toolbar = document.getElementById("selection-toolbar");
+            const BASE_HEIGHT = 560;
+            let currentSelection = "";
+
+            const setFrameHeight = () => {
+                const bodyHeight = document.body.scrollHeight;
+                const height = Math.max(BASE_HEIGHT, bodyHeight);
+                if (StreamlitLib && typeof StreamlitLib.setFrameHeight === "function") {
+                    StreamlitLib.setFrameHeight(height);
+                }
+            };
+
+            const toHtml = (text) => {
+                const div = document.createElement("div");
+                div.textContent = text || "";
+                return div.innerHTML
+                    .replace(/\n\n/g, "<br><br>")
+                    .replace(/\n/g, "<br>");
+            };
+
+            const hideToolbar = () => {
+                toolbar.classList.add("selection-hidden");
+            };
+
+            const showToolbar = (rect) => {
+                toolbar.style.top = `${rect.top + window.scrollY - 48}px`;
+                toolbar.style.left = `${rect.left + window.scrollX + rect.width / 2}px`;
+                toolbar.classList.remove("selection-hidden");
+            };
+
+            const clearWindowSelection = () => {
+                const selection = window.getSelection();
+                if (selection) {
+                    selection.removeAllRanges();
+                }
+            };
+
+            const evaluateSelection = () => {
+                const selection = window.getSelection();
+                if (!selection) {
+                    hideToolbar();
+                    return;
+                }
+                const text = selection.toString().trim();
+                if (!text) {
+                    hideToolbar();
+                    return;
+                }
+                if (!readingPane.contains(selection.anchorNode) || !readingPane.contains(selection.focusNode)) {
+                    hideToolbar();
+                    return;
+                }
+                currentSelection = text;
+                if (selection.rangeCount > 0) {
+                    const rect = selection.getRangeAt(0).getBoundingClientRect();
+                    showToolbar(rect);
+                }
+            };
+
+            ["mouseup", "keyup", "touchend"].forEach((evt) => {
+                readingPane.addEventListener(evt, () => window.requestAnimationFrame(evaluateSelection));
+            });
+
+            toolbar.querySelectorAll("button").forEach((btn) => {
+                btn.addEventListener("click", (event) => {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    if (!currentSelection) {
+                        hideToolbar();
+                        return;
+                    }
+                    if (StreamlitLib && typeof StreamlitLib.setComponentValue === "function") {
+                        StreamlitLib.setComponentValue({
+                            action: btn.dataset.action || "ask",
+                            text: currentSelection,
+                        });
+                    }
+                    hideToolbar();
+                    clearWindowSelection();
+                });
+            });
+
+            const render = (args = {}) => {
+                readingPane.innerHTML = toHtml(args.text_content || "");
+                hideToolbar();
+                currentSelection = "";
+                window.requestAnimationFrame(setFrameHeight);
+            };
+
+            if (StreamlitLib && StreamlitLib.events) {
+                StreamlitLib.events.addEventListener(StreamlitLib.RENDER_EVENT, (event) => {
+                    render((event.detail && event.detail.args) || {});
+                });
+                if (typeof StreamlitLib.setComponentReady === "function") {
+                    StreamlitLib.setComponentReady();
+                }
+                setFrameHeight();
+            } else {
+                render();
+            }
+        })();
+    </script>
+</body>
+</html>

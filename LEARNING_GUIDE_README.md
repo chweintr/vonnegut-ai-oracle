@@ -70,12 +70,12 @@ Access at `http://localhost:8501`
 1. **Select Mode:** Choose between "Chat with Kurt" or "Interactive Reading Guide" tabs
 
 2. **In Reading Guide Mode:**
-   - Select a text from the dropdown (e.g., "2BR02B" or "The Big Trip Up Yonder")
-   - Read through the text in the left panel
-   - Copy an interesting passage
-   - Paste it in the "Paste a passage to discuss" box
-   - Ask a question or use quick buttons ("Explain this", "Themes?")
-   - Click "Ask Kurt" to get an educational response
+   - Open the sidebar profile panel and tell Kurt who you are (student, educator, writer, etc.)
+   - Select a text from the dropdown (public-domain stories or your private excerpts)
+   - Highlight any sentence/paragraph in the reading pane
+   - Click the floating "Ask Kurt" or "Themes" toolbar
+   - Kurt automatically analyzes the highlighted passage in the sidebar
+   - Use quick buttons ("Explain this", "Themes"), follow-up box, or voice toggle
 
 3. **Upload Your Own Texts:**
    - Use the file uploader to add .txt files
@@ -146,9 +146,35 @@ The learning guide includes these public domain Vonnegut stories:
    - Originally titled "Tomorrow and Tomorrow and Tomorrow"
 
 **Adding More Texts:**
-- Place .txt files in `data/raw/` directory
+- Place .txt files in `data/raw/` (public domain) or `data/excerpts/` (fair-use excerpts)
 - They will automatically appear in the text selector
 - Ensure copyright compliance (public domain or fair use)
+
+### Adaptive Profiling (NEW)
+- Reader profile lives in the sidebar and syncs across chat + learning guide.
+- Choose a persona (General Reader, High School Student, Creative Writer, etc.), discipline, region, and response depth.
+- Kurt tunes tone, analogies, and cultural references based on those selections.
+- Update the profile anytime; future releases will store it across sessions once auth is enabled.
+
+## ✍️ Grounding Kurt in Authentic Texts
+
+To make the AI feel like real Vonnegut consultation, run the new corpus indexer:
+
+```bash
+# Paste 500–1000 word excerpts for Slaughterhouse-Five, Cat's Cradle,
+# and Breakfast of Champions into data/excerpts/*.txt first.
+
+python build_corpus_index.py
+```
+
+What this does:
+
+- Scans `data/vonnegut_corpus`, `data/raw`, and `data/excerpts`
+- Chunks every text file, embeds it with `text-embedding-3-large`
+- Saves `data/corpus_index.jsonl`
+- Streamlit automatically loads this index and injects the best-matching excerpts into every GPT-4 prompt, so Kurt quotes his own speeches, interviews, and fiction when answering.
+
+If the index is missing, the app shows a warning banner with rebuild instructions.
 
 ## 🔧 Technical Architecture
 

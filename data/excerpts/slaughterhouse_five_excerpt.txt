@@ -1,0 +1,15 @@
+# Slaughterhouse-Five Excerpt Placeholder
+# -------------------------------------------------------
+# Add a 500-1000 word excerpt that best illustrates:
+#   • Billy Pilgrim's time-travel episodes and Tralfamadorian philosophy
+#   • The Dresden destruction and "So it goes" refrain
+#   • Interplay between fatalism and dark humor
+#
+# Usage:
+#   Replace everything below this comment block with the excerpt text.
+#   Keep it under ~1000 words to stay within fair-use guidelines.
+#   Avoid adding analysis here—the AI guide handles commentary.
+#
+# NOTE: This placeholder exists because copyrighted text cannot
+#       be bundled inside the repository. Paste the excerpt locally
+#       before running the learning guide.

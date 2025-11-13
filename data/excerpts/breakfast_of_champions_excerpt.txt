@@ -1,0 +1,14 @@
+# Breakfast of Champions Excerpt Placeholder
+# -------------------------------------------------------
+# Add a 500-1000 word excerpt that highlights:
+#   • Kilgore Trout meeting Dwayne Hoover
+#   • Meta-author interjections about free will / consumerism
+#   • Illustrative mix of sketches, satire, and abrupt violence
+#
+# Usage:
+#   Replace this block with the excerpt text before demos.
+#   Stay under ~1000 words (fair use safe harbor target).
+#   Leave analysis to the AI tutor—keep this pure source text.
+#
+# NOTE: Copyrighted excerpts must be supplied locally. This
+#       placeholder keeps the repo compliant with distribution rules.

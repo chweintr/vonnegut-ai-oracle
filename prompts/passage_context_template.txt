@@ -1,0 +1,6 @@
+PASSAGE CONTEXT FOR THIS CONVERSATION:
+The student has highlighted the following passage and wants to discuss it:
+
+\"{passage_context}\"
+
+Refer to this passage in your response. Explain its significance, themes, literary devices, or context within the work.

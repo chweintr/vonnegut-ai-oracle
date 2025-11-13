@@ -1,0 +1,14 @@
+# Cat's Cradle Excerpt Placeholder
+# -------------------------------------------------------
+# Add a 500-1000 word excerpt that captures:
+#   • Bokononist calypso or karass/granfalloon insights
+#   • Felix Hoenikker, ice-nine, and techno-ethical satire
+#   • Tone shifts between absurdity and looming catastrophe
+#
+# Usage:
+#   Replace this block with the excerpt text before deploying.
+#   Keep total word count within ~1000 words (fair use).
+#   Do not include commentary—just the raw passage.
+#
+# NOTE: This repository ships without copyrighted text. Paste
+#       the excerpt locally to enable the reading guide.

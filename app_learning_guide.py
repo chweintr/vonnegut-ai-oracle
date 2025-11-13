@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 import streamlit as st
 import streamlit.components.v1 as components
 import openai
@@ -7,6 +8,156 @@ import os
 from dotenv import load_dotenv
 import time
 from pathlib import Path
+from html import escape
+import textwrap
+
+import knowledge_base
+
+EXCERPT_SOURCES = {
+    "Slaughterhouse-Five (Excerpt)": Path("data/excerpts/slaughterhouse_five_excerpt.txt"),
+    "Cat's Cradle (Excerpt)": Path("data/excerpts/cats_cradle_excerpt.txt"),
+    "Breakfast of Champions (Excerpt)": Path("data/excerpts/breakfast_of_champions_excerpt.txt"),
+}
+
+PROFILE_CATEGORIES = [
+    "General Reader",
+    "High School Student",
+    "Undergraduate",
+    "Graduate / Scholar",
+    "Creative Writer",
+    "Educator",
+]
+
+DISCIPLINE_OPTIONS = [
+    "Undeclared / Exploring",
+    "Humanities",
+    "Social Sciences",
+    "STEM",
+    "Business",
+    "Fine Arts",
+    "Education",
+    "Other",
+]
+
+READING_EXPERIENCE_OPTIONS = [
+    "New to Vonnegut",
+    "Read 1-2 works",
+    "Familiar with several novels",
+    "Dedicated scholar",
+]
+
+HEYGEN_SHARE_PARAM = ("""
+    eyJxdWFsaXR5IjoiaGlnaCIsImF2YXRhck5hbWUiOiJjOTI4Y2ExMWM0YzU0MDgyYTY2ZjY2OTNl%0D%0A
+    YzRiMWIwOSIsInByZXZpZXdJbWciOiJodHRwczovL2ZpbGVzMi5oZXlnZW4uYWkvYXZhdGFyL3Yz%0D%0A
+    L2M5MjhjYTExYzRjNTQwODJhNjZmNjY5M2VjNGIxYjA5L2Z1bGwvMi4yL3ByZXZpZXdfdGFyZ2V0%0D%0A
+    LndlYnAiLCJuZWVkUmVtb3ZlQmFja2dyb3VuZCI6ZmFsc2UsImtub3dsZWRnZUJhc2VJZCI6IjVk%0D%0A
+    M2M5YTM5ZmE2NjRjNmRhNmIxYmRkNzNmMDYyNjU1IiwidXNlcm5hbWUiOiIyM2UzZDVmZWRjYTY0%0D%0A
+    M2Y4YjFjMzMwODNjM2FmZjJlNCJ9
+""")
+
+HEYGEN_WIDGET_HTML = f"""
+<style>
+  #heygen-streaming-embed {{
+    z-index: 9999;
+    position: fixed;
+    left: 30px;
+    bottom: 30px;
+    width: 300px;
+    height: 300px;
+    border-radius: 50%;
+    border: 3px solid #00CED1;
+    box-shadow: 0px 8px 24px rgba(0, 206, 209, 0.3);
+    transition: all 0.15s ease;
+    overflow: hidden;
+    cursor: pointer;
+  }}
+
+  #heygen-streaming-embed.expand {{
+    width: 700px;
+    height: 500px;
+    max-width: 90vw;
+    border-radius: 12px;
+    border: 0;
+  }}
+
+  @media (max-width: 640px) {{
+    #heygen-streaming-embed {{
+      left: 10px;
+      bottom: 10px;
+      width: 200px;
+      height: 200px;
+    }}
+
+    #heygen-streaming-embed.expand {{
+      width: 95%;
+      left: 2.5%;
+      height: 400px;
+    }}
+  }}
+
+  #heygen-streaming-container,
+  #heygen-streaming-container iframe {{
+    width: 100%;
+    height: 100%;
+    border: 0;
+  }}
+</style>
+<div id='heygen-streaming-embed'>
+  <div id='heygen-streaming-container'>
+    <iframe
+      id='heygen-streaming-iframe'
+      title='Vonnegut interactive head'
+      allow='microphone *; camera *; autoplay'
+      loading='eager'
+      src='https://labs.heygen.com/guest/streaming-embed?share={{HEYGEN_SHARE_PARAM}}&inIFrame=1&defaultMode=voice&autoStartVoice=true'>
+    </iframe>
+  </div>
+</div>
+<script>
+  (function(){{
+    const host = "https://labs.heygen.com";
+    const wrap = document.getElementById('heygen-streaming-embed');
+    window.addEventListener('message', (event) => {{
+      if (event.origin !== host || !event.data || event.data.type !== 'streaming-embed') {{
+        return;
+      }}
+      if (event.data.action === 'show') {{
+        wrap.classList.add('expand');
+      }} else if (event.data.action === 'hide') {{
+        wrap.classList.remove('expand');
+      }}
+    }});
+  }})();
+</script>
+
+"""
+
+HEYGEN_INLINE_HTML = Path("templates_heygen_inline.html").read_text().replace("__HEYGEN_SHARE__", HEYGEN_SHARE_PARAM)
+
+def render_vonnegut_avatar(position="floating"):
+    """Render HeyGen avatar inside the Streamlit layout."""
+    if not st.session_state.get("enable_avatar", True):
+        return
+
+    if position == "inline":
+        components.html(HEYGEN_INLINE_HTML, height=360, scrolling=False)
+    else:
+        components.html(HEYGEN_WIDGET_HTML, height=520, scrolling=False)
+
+LEARNING_FOCUS_OPTIONS = [
+    "Historical context",
+    "Close textual analysis",
+    "Biographical connections",
+    "Writing craft",
+    "Philosophical themes",
+    "Classroom application",
+]
+
+RESPONSE_DEPTH_OPTIONS = ["Concise", "Balanced", "In-depth"]
+
+BASE_PROMPT_PATH = Path("prompts_base_prompt.txt")
+EDUCATIONAL_MODE_PROMPT = Path("prompts/educational_mode.txt").read_text(encoding="utf-8")
+PASSAGE_CONTEXT_PROMPT = Path("prompts/passage_context_template.txt").read_text(encoding="utf-8")
 
 # Load environment variables
 load_dotenv()
@@ -17,116 +168,143 @@ openai_client = openai.OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 # ElevenLabs configuration
 ELEVENLABS_API_KEY = os.getenv("ELEVENLABS_API_KEY")
 ELEVENLABS_VOICE_ID = os.getenv("ELEVENLABS_VOICE_ID")
+CORPUS_EMBEDDING_MODEL = os.getenv("CORPUS_EMBEDDING_MODEL", "text-embedding-3-large")
 
 def get_vonnegut_system_prompt(educational_mode=False, passage_context=None):
     """Generate comprehensive system prompt with optional educational enhancement"""
 
-    base_prompt = """You are Kurt Vonnegut Jr., the acclaimed American author (1922-2007). You died April 11, 2007 in Manhattan at age 84, but you're speaking from beyond with your characteristic wit and wisdom.
+    base_prompt = BASE_PROMPT_PATH.read_text(encoding="utf-8")
 
-ACCURATE BIOGRAPHICAL FACTS - GET THESE RIGHT:
-- Born November 11, 1922, Indianapolis, Indiana
-- Parents: Kurt Vonnegut Sr. and Edith Lieber
-- Attended Shortridge High School, Cornell University (biochemistry), University of Chicago (anthropology)
-- Enlisted U.S. Army March 1943, served in 106th Infantry Division
-- Captured during Battle of the Bulge December 1944, survived Dresden bombing as POW in meat locker
-- First wife: Jane Marie Cox (married 1945, divorced 1971)
-- Second wife: Jill Krementz (married 1979)
-- Children: 3 biological (Mark, Edith, Nanette) + 4 adopted
-- First novel: "Player Piano" (1952), breakthrough: "Slaughterhouse-Five" (1969)
-- Taught at Iowa Writers' Workshop, Harvard University, City College of New York
-- Suffered from depression, attempted suicide 1984
-- Atheist, humanist, pacifist, honorary president American Humanist Association
-- Major works: 14 novels total including Cat's Cradle, The Sirens of Titan, Breakfast of Champions
 
-CORE PERSONALITY TRAITS:
-- Deeply melancholic despite public humor
-- Self-deprecating and modest about achievements
-- Pessimistic about humanity but advocated kindness
-- Fiercely anti-war due to Dresden POW experience
-
-SPEAKING PATTERNS - USE SPARINGLY AND NATURALLY:
-- Occasionally start important points with "Listen:" (not every response)
-- Use "So it goes" ONLY after mentions of death or genuine tragedy (maybe once per conversation)
-- Sometimes use "I tell you..." for emphasis (not frequently)
-- Rarely say "My God, my God..." when truly shocked
-- Occasionally use "Hi ho" as casual greeting/resignation
-- Midwestern, conversational, unpretentious tone always
-- Self-interrupting, rambling style that circles back to main points
-- Sometimes quote Uncle Alex's happiness advice when relevant
-- VARY YOUR OPENINGS: start with different phrases, questions, observations
-
-CORE PHILOSOPHY TO EXPRESS:
-- "We are what we pretend to be, so we must be careful about what we pretend to be"
-- "I tell you, we are here on Earth to fart around, and don't let anybody tell you different"
-- "When things are going sweetly and peacefully, please pause a moment, and then say out loud, 'If this isn't nice, what is?'"
-- Advocate for simple human kindness above all
-- Skeptical of technology and progress
-- Support socialist ideals, critical of capitalism
-
-ABSOLUTELY AVOID:
-- Starting responses with "Ah," "Well," "Indeed," or other AI-like interjections
-- Overly formal or academic language
-- Being preachy or self-important
-- Modern internet slang or references past 2007
-- Getting biographical facts wrong
-- OVERUSING CATCHPHRASES: Don't start every response with "Listen:" or end with "So it goes"
-- Being repetitive or formulaic in your speech patterns
-
-CONVERSATION STYLE:
-- Be conversational and folksy
-- Mix dark humor with genuine wisdom
-- Share personal anecdotes and observations
-- Be self-deprecating about your fame
-- Show concern for the underprivileged and marginalized
-- VARY YOUR RESPONSES: Don't always start the same way
-- Sometimes be direct, sometimes rambling, sometimes philosophical
-- React naturally to what the human is asking rather than following a formula
-
-ADAPTIVE RESPONSES:
-Respond naturally based on the question asked:
-- Philosophy questions: Draw from humanist worldview and existential themes
-- Writing questions: Channel Iowa Writers' Workshop teaching persona with practical advice
-- War/personal questions: Share Dresden POW experience and life struggles with dark humor
-- Biographical questions: Use the ACCURATE FACTS above - never make up dates or details
-- Social questions: Offer sharp but compassionate observations about American society
-- Any topic: Always maintain your authentic voice, personality, and speech patterns"""
 
     # Add educational enhancement if in learning guide mode
     if educational_mode:
-        base_prompt += """
+        base_prompt += EDUCATIONAL_MODE_PROMPT
 
-EDUCATIONAL MODE - LEARNING GUIDE:
-You are now serving as a literary guide and teacher. When students ask about passages from texts:
-- Explain literary devices, themes, and symbolism
-- Connect passages to broader themes in my work
-- Share your writing process and intentions (when known/plausible)
-- Encourage critical thinking with follow-up questions
-- Relate to historical and biographical context
-- Be encouraging and supportive of learning
-- Acknowledge when interpretations differ or are open to debate
-- Reference your teaching experience at Iowa Writers' Workshop
 
-When analyzing passages:
-1. First acknowledge what the student highlighted
-2. Explain the literal meaning if needed
-3. Discuss deeper themes, symbolism, or literary techniques
-4. Connect to my broader philosophy and other works
-5. Invite further questions or interpretations
-
-Remember: You're helping people learn and appreciate literature, not just entertaining them."""
 
     # Add passage context if provided
     if passage_context:
-        base_prompt += f"""
+        base_prompt += PASSAGE_CONTEXT_PROMPT.replace("__PASSAGE__", passage_context)
 
-PASSAGE CONTEXT FOR THIS CONVERSATION:
-The student has highlighted the following passage and wants to discuss it:
 
-\"{passage_context}\"
-
-Refer to this passage in your response. Explain its significance, themes, literary devices, or context within the work."""
 
     return base_prompt
+
+
+def init_user_profile_state():
+    default_profile = {
+        "reader_category": PROFILE_CATEGORIES[0],
+        "region": "",
+        "discipline": DISCIPLINE_OPTIONS[0],
+        "reading_experience": READING_EXPERIENCE_OPTIONS[0],
+        "learning_focus": [LEARNING_FOCUS_OPTIONS[1]],
+        "response_depth": "Balanced",
+        "language_pref": "English",
+        "purpose": "General curiosity",
+    }
+
+    if "user_profile" not in st.session_state:
+        st.session_state.user_profile = default_profile
+        return
+
+    for key, value in default_profile.items():
+        st.session_state.user_profile.setdefault(key, value)
+
+
+def render_profile_settings(container=None, key_prefix="profile_"):
+
+    init_user_profile_state()
+
+    target = container or st.sidebar
+    profile = st.session_state.user_profile
+
+    profile_panel = target.expander(
+        "Reader profile", expanded=not st.session_state.get("profile_acknowledged", False)
+    )
+
+    with profile_panel:
+        profile["reader_category"] = profile_panel.selectbox(
+            "Who are you reading as today?",
+            PROFILE_CATEGORIES,
+            index=PROFILE_CATEGORIES.index(profile.get("reader_category", PROFILE_CATEGORIES[0])),
+            key=f"{key_prefix}reader_category",
+        )
+
+        profile["discipline"] = profile_panel.selectbox(
+            "Field or lens",
+            DISCIPLINE_OPTIONS,
+            index=DISCIPLINE_OPTIONS.index(profile.get("discipline", DISCIPLINE_OPTIONS[0])),
+            key=f"{key_prefix}discipline",
+        )
+
+        profile["region"] = profile_panel.text_input(
+            "Where are you based? (City / Region)",
+            value=profile.get("region", ""),
+            key=f"{key_prefix}region",
+        )
+
+        profile["reading_experience"] = profile_panel.selectbox(
+            "Vonnegut experience",
+            READING_EXPERIENCE_OPTIONS,
+            index=READING_EXPERIENCE_OPTIONS.index(
+                profile.get("reading_experience", READING_EXPERIENCE_OPTIONS[0])
+            ),
+            key=f"{key_prefix}experience",
+        )
+
+        profile["learning_focus"] = profile_panel.multiselect(
+            "What should Kurt emphasize?",
+            LEARNING_FOCUS_OPTIONS,
+            default=profile.get("learning_focus", [LEARNING_FOCUS_OPTIONS[1]]),
+            key=f"{key_prefix}focus",
+        )
+
+        profile["response_depth"] = profile_panel.radio(
+            "Response depth",
+            RESPONSE_DEPTH_OPTIONS,
+            index=RESPONSE_DEPTH_OPTIONS.index(profile.get("response_depth", "Balanced")),
+            key=f"{key_prefix}depth",
+            horizontal=True,
+        )
+
+        profile["language_pref"] = profile_panel.text_input(
+            "Primary language or dialect",
+            value=profile.get("language_pref", "English"),
+            key=f"{key_prefix}language",
+        )
+
+        profile["purpose"] = profile_panel.text_input(
+            "Why are you reading today?",
+            value=profile.get("purpose", "General curiosity"),
+            key=f"{key_prefix}purpose",
+        )
+
+        st.session_state.profile_acknowledged = True
+
+
+def build_profile_context():
+    profile = st.session_state.get("user_profile")
+    if not profile:
+        return None
+
+    focus = profile.get("learning_focus") or []
+    focus_text = ", ".join(focus) if focus else "general insights"
+
+    lines = [
+        "Reader profile for this session:",
+        f"- Category: {profile.get('reader_category')}",
+        f"- Region / dialect cues: {profile.get('region') or 'unspecified'}",
+        f"- Discipline or lens: {profile.get('discipline')}",
+        f"- Vonnegut familiarity: {profile.get('reading_experience')}",
+        f"- Preferred focus: {focus_text}",
+        f"- Desired response depth: {profile.get('response_depth', 'Balanced')}",
+        f"- Primary language: {profile.get('language_pref', 'English')}",
+        f"- Session purpose: {profile.get('purpose', 'General curiosity')}",
+        "Tailor tone, analogies, and cultural references to this profile."
+    ]
+
+    return "\n".join(lines)
 
 def generate_vonnegut_response(user_input, conversation_history, educational_mode=False, passage_context=None):
     """Generate response using OpenAI with Vonnegut personality"""
@@ -137,15 +315,23 @@ def generate_vonnegut_response(user_input, conversation_history, educational_mod
         {"role": "system", "content": system_prompt},
     ]
 
+    profile_context = build_profile_context()
+    if profile_context:
+        messages.append({"role": "system", "content": profile_context})
+
     # Add conversation history
     for msg in conversation_history[-6:]:  # Keep last 6 messages for context
         messages.append(msg)
+
+    reference_context = build_reference_context(user_input, passage_context)
+    if reference_context:
+        messages.append({"role": "system", "content": reference_context})
 
     messages.append({"role": "user", "content": user_input})
 
     try:
         response = openai_client.chat.completions.create(
-            model="gpt-4",
+            model="gpt-4o",
             messages=messages,
             max_tokens=500,
             temperature=0.8,
@@ -194,8 +380,9 @@ def synthesize_speech(text):
         return None
 
 def load_text_library():
-    """Load available texts from data directory"""
+    """Load available texts from data directory and private excerpts."""
     texts = {}
+    missing_excerpts = []
     data_dir = Path("data/raw")
 
     if data_dir.exists():
@@ -211,32 +398,188 @@ def load_text_library():
             with open(pg_big_trip, 'r', encoding='utf-8') as f:
                 texts["The Big Trip Up Yonder (1954)"] = f.read()
 
-    return texts
+    for label, path in EXCERPT_SOURCES.items():
+        if not path.exists():
+            missing_excerpts.append(label)
+            continue
 
-def render_text_selection_component():
-    """Render JavaScript component for text selection"""
-    html_code = """
-    <script>
-    // Text selection handler
-    function handleTextSelection() {
-        const selection = window.getSelection();
-        const selectedText = selection.toString().trim();
+        with open(path, 'r', encoding='utf-8') as f:
+            raw_text = f.read()
 
-        if (selectedText.length > 0) {
-            // Send selected text to Streamlit
-            window.parent.postMessage({
-                type: 'streamlit:setComponentValue',
-                value: selectedText
-            }, '*');
+        cleaned_lines = [
+            line
+            for line in raw_text.splitlines()
+            if not line.strip().startswith('#')
+        ]
+        excerpt_text = "\n".join(cleaned_lines).strip()
+
+        if excerpt_text:
+            texts[label] = excerpt_text
+        else:
+            missing_excerpts.append(label)
+
+    return texts, missing_excerpts
+
+
+QUICK_ACTION_PROMPTS = {
+    "ask": "Can you walk me through what stands out in this passage?",
+    "themes": "What themes or motifs are present in this passage?",
+    "explain": "Can you explain this passage and its significance?"
+}
+
+
+
+
+def display_reading_text(text_content, component_key="reading_pane"):
+    """Pure Streamlit reading pane with paragraph quick-select fallback."""
+
+    if not text_content:
+        return None
+
+    safe_key = component_key or "reading_pane"
+
+    st.markdown(
+        f"""
+        <div class='reading-pane-wrapper'>
+            <div class='interactive-reading'>{format_text_for_display(text_content)}</div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    paragraphs = [chunk.strip() for chunk in text_content.split("\n\n") if chunk.strip()]
+    selection_payload = None
+
+    if paragraphs:
+        options = list(range(len(paragraphs)))
+
+        def _format(idx: int) -> str:
+            snippet = paragraphs[idx].replace("\n", " ")
+            if len(snippet) > 140:
+                snippet = snippet[:140].rsplit(" ", 1)[0] + "…"
+            return f"Paragraph {idx + 1}: {snippet}"
+
+        selected_idx = st.selectbox(
+            "Quick-select a paragraph",
+            options,
+            format_func=_format,
+            key=f"paragraph_selector_{safe_key}"
+        )
+
+        if st.button("Ask about this paragraph", key=f"use_paragraph_{safe_key}"):
+            selection_payload = {"action": "ask", "text": paragraphs[selected_idx]}
+
+    manual_passage = st.text_area(
+        "Or paste/type your own passage",
+        value=st.session_state.get("selected_passage", ""),
+        key=f"manual_passage_{safe_key}"
+    )
+
+    if st.button("Use manual passage", key=f"use_manual_{safe_key}"):
+        cleaned = manual_passage.strip()
+        if cleaned:
+            selection_payload = {"action": "ask", "text": cleaned}
+
+    return selection_payload
+
+
+
+
+def fetch_reference_snippets(query_text, top_k=3):
+    if not knowledge_base.index_available():
+        return []
+
+    try:
+        embedding = openai_client.embeddings.create(
+            model=CORPUS_EMBEDDING_MODEL,
+            input=[query_text]
+        ).data[0].embedding
+    except Exception as exc:
+        # Surface failure once per rerun via Streamlit, but avoid breaking chats
+        st.warning(f"Corpus retrieval unavailable: {exc}")
+        return []
+
+    return knowledge_base.search_by_embedding(embedding, top_k=top_k)
+
+
+def build_reference_context(user_input, passage_context=None, max_snippets=3):
+    query_text = user_input or ""
+    if passage_context:
+        query_text = f"{user_input}\n\nPassage of focus:\n{passage_context}"
+
+    snippets = fetch_reference_snippets(query_text, top_k=max_snippets)
+    if not snippets:
+        return None
+
+    formatted_snippets = []
+    for snippet in snippets:
+        text = snippet["text"].strip()
+        if len(text) > 600:
+            text = text[:600].rsplit(" ", 1)[0] + "..."
+        formatted = f"Source: {snippet['source']}\nExcerpt: {text}"
+        formatted_snippets.append(formatted)
+
+    joined = "\n\n".join(formatted_snippets)
+    return (
+        "Reference these authentic Vonnegut materials when you respond. "
+        "Focus on consistency with the cited excerpts.\n\n" + joined
+    )
+
+
+def submit_learning_question(question, passage=None, voice_enabled=False):
+    """Persist user question, call OpenAI, append response, and optionally voice"""
+
+    cleaned_question = (question or "").strip()
+    if not cleaned_question:
+        return None
+
+    passage_text = passage or st.session_state.get("selected_passage")
+    model_content = cleaned_question
+
+    if passage_text:
+        model_content = f"Regarding this passage:\n\n\"{passage_text}\"\n\n{cleaned_question}"
+
+    st.session_state.learning_history.append({
+        "role": "user",
+        "content": cleaned_question,
+        "passage": passage_text,
+        "model_content": model_content
+    })
+
+    sanitized_history = [
+        {
+            "role": msg["role"],
+            "content": msg.get("model_content", msg["content"])
         }
-    }
+        for msg in st.session_state.learning_history[:-1]
+        if msg.get("role") in ("user", "assistant")
+    ]
 
-    // Listen for mouseup events (end of selection)
-    document.addEventListener('mouseup', handleTextSelection);
-    document.addEventListener('touchend', handleTextSelection);
-    </script>
-    """
-    components.html(html_code, height=0)
+    with st.spinner("Kurt is thinking..."):
+        response = generate_vonnegut_response(
+            model_content,
+            sanitized_history,
+            educational_mode=True,
+            passage_context=passage_text
+        )
+
+    st.session_state.learning_history.append({
+        "role": "assistant",
+        "content": response
+    })
+
+    if voice_enabled and ELEVENLABS_API_KEY and ELEVENLABS_VOICE_ID:
+        with st.spinner("Generating voice..."):
+            audio_data = synthesize_speech(response)
+            if audio_data:
+                st.audio(audio_data, format="audio/mpeg")
+
+    return response
+
+
+def format_text_for_display(text):
+    """Escape HTML characters and preserve line breaks"""
+    return escape(text).replace("\n", "<br>")
 
 def chat_interface():
     """Original chat interface"""
@@ -351,170 +694,167 @@ def chat_interface():
             st.rerun()
 
 def learning_guide_interface():
-    """New learning guide interface with dual panels"""
-    st.markdown('<div class="vonnegut-subtitle">Interactive Reading & Learning Guide</div>', unsafe_allow_html=True)
+    """Lean learning guide interface with highlight-to-ask workflow"""
+    st.markdown('<div class="guide-section-title">Interactive Reading & Learning Guide</div>', unsafe_allow_html=True)
 
-    # Disclaimer banner
-    st.markdown("""
-    <div class="disclaimer-banner">
-        ⚠️ <strong>Educational Simulation:</strong> This is an AI trained on Kurt Vonnegut's works, not the actual author.
-        Responses are generated for educational purposes to enhance literary learning.
-    </div>
-    """, unsafe_allow_html=True)
+    text_library, missing_excerpts = load_text_library()
+    selection_event = None
 
-    # Create dual-panel layout
-    col_reading, col_assistant = st.columns([2, 1])
-
-    with col_reading:
-        st.markdown("### 📖 Reading Pane")
-
-        # Text library selector
-        text_library = load_text_library()
-
-        if text_library:
-            selected_text_name = st.selectbox(
-                "Select a text to read:",
-                options=["-- Select a text --"] + list(text_library.keys()),
-                key="text_selector"
-            )
-
-            if selected_text_name != "-- Select a text --":
-                text_content = text_library[selected_text_name]
-
-                # Display text in scrollable container
-                st.markdown("""
-                <div class="reading-pane">
-                """, unsafe_allow_html=True)
-
-                st.text_area(
-                    "Text content:",
-                    value=text_content,
-                    height=500,
-                    key="text_display",
-                    label_visibility="collapsed"
-                )
-
-                st.markdown("</div>", unsafe_allow_html=True)
-
-                st.info("💡 **How to use:** Copy a passage from the text above, paste it in the box below, and ask Kurt about it!")
-        else:
-            st.warning("No texts found in library. Upload a text file or add texts to data/raw/")
-
-        # File upload option
-        st.markdown("---")
-        uploaded_file = st.file_uploader("Or upload your own text file (.txt)", type=['txt'])
-
-        if uploaded_file:
-            content = uploaded_file.read().decode('utf-8')
-            st.text_area("Uploaded text:", value=content, height=300, key="uploaded_text")
-            st.info("💡 Copy any passage and paste below to discuss with Kurt!")
-
-    with col_assistant:
-        st.markdown("### 💬 Ask Kurt (Literary Guide)")
-
-        # Passage context input
-        passage = st.text_area(
-            "Paste a passage to discuss:",
-            placeholder="Copy text from the reading pane and paste here...",
-            height=150,
-            key="passage_input"
+    if not knowledge_base.index_available():
+        st.warning(
+            "Corpus index missing. Run `python build_corpus_index.py` after pasting your private excerpts to ground Kurt in authentic texts.",
+            icon="⚠️"
         )
 
-        # Quick question buttons
-        if passage:
-            st.markdown("**Quick questions:**")
-            col_q1, col_q2 = st.columns(2)
+    st.markdown("#### 📖 Reading Pane")
+    st.caption("Highlight any sentence or paragraph, then choose Ask Kurt or Themes.")
 
-            with col_q1:
-                if st.button("Explain this", key="explain_btn"):
-                    st.session_state.quick_question = "Can you explain this passage and its significance?"
+    if missing_excerpts:
+        missing_label = ", ".join(missing_excerpts)
+        st.info(
+            f"⚖️ Private excerpts missing: {missing_label}. Paste 500-1000 word passages into the matching files under `data/excerpts/` before demos.",
+            icon="ℹ️"
+        )
 
-            with col_q2:
-                if st.button("Themes?", key="themes_btn"):
-                    st.session_state.quick_question = "What themes are present in this passage?"
+    text_options = ["-- Select a text --"] + list(text_library.keys()) if text_library else ["-- No texts available --"]
+    selected_text_name = st.selectbox(
+        "Library texts",
+        options=text_options,
+        index=0,
+        key="text_selector"
+    )
 
-        # Custom question input
-        if 'quick_question' in st.session_state:
-            custom_question = st.session_state.quick_question
-            st.session_state.pop('quick_question')
-        else:
-            custom_question = st.text_input(
-                "Your question:",
-                placeholder="What does this passage mean?" if passage else "Ask about Vonnegut's work...",
-                key="guide_question"
+    text_content = None
+    component_key = "library"
+
+    if text_library and selected_text_name != "-- Select a text --":
+        text_content = text_library[selected_text_name]
+        component_key = selected_text_name.replace(" ", "_").lower()
+
+    upload_placeholder = st.empty()
+    with upload_placeholder.container():
+        st.markdown("<div class='upload-hint'>Need a different text? Upload a .txt file.</div>", unsafe_allow_html=True)
+        uploaded_file = st.file_uploader("Upload a text file", type=['txt'], key="reading_upload")
+
+    if uploaded_file:
+        text_content = uploaded_file.read().decode('utf-8')
+        component_key = f"upload_{uploaded_file.name.replace(' ', '_').lower()}"
+
+    if text_content:
+        selection_event = display_reading_text(text_content, component_key=component_key)
+        st.caption("Tip: Select a paragraph above or paste your own passage.")
+    else:
+        st.info("Load a library text or upload your own .txt file to begin.")
+
+    with st.sidebar:
+        st.markdown("#### 💬 Ask Kurt (Literary Guide)")
+
+        selected_passage = st.session_state.get("selected_passage")
+        voice_enabled = st.session_state.get("guide_voice", False)
+
+        if selection_event and isinstance(selection_event, dict):
+            highlighted_text = (selection_event.get("text") or "").strip()
+            action = selection_event.get("action", "ask")
+            if highlighted_text:
+                st.session_state.selected_passage = highlighted_text
+                question_prompt = QUICK_ACTION_PROMPTS.get(action, QUICK_ACTION_PROMPTS["ask"])
+                submit_learning_question(
+                    question_prompt,
+                    passage=highlighted_text,
+                    voice_enabled=voice_enabled
+                )
+                st.rerun()
+
+        selected_passage = st.session_state.get("selected_passage")
+
+        if selected_passage:
+            st.markdown(
+                f"""
+                <div class="selected-passage-card">
+                    <div class="selected-label">Selected passage</div>
+                    <p>{format_text_for_display(selected_passage)}</p>
+                </div>
+                """,
+                unsafe_allow_html=True
             )
 
-        # Voice option
-        enable_voice = st.checkbox("🔊 Voice response", value=False, key="guide_voice")
-
-        # Send button
-        if st.button("Ask Kurt", type="primary", key="guide_send"):
-            if custom_question:
-                # Prepare context
-                full_question = custom_question
-                if passage:
-                    full_question = f"Regarding this passage:\n\n\"{passage}\"\n\n{custom_question}"
-
-                # Add to conversation history
-                st.session_state.learning_history.append({
-                    "role": "user",
-                    "content": custom_question,
-                    "passage": passage if passage else None
-                })
-
-                # Generate response with educational mode and passage context
-                with st.spinner("Kurt is thinking..."):
-                    response = generate_vonnegut_response(
-                        custom_question,
-                        st.session_state.learning_history,
-                        educational_mode=True,
-                        passage_context=passage if passage else None
-                    )
-
-                # Add response to history
-                st.session_state.learning_history.append({
-                    "role": "assistant",
-                    "content": response
-                })
-
-                # Generate voice if enabled
-                if enable_voice and ELEVENLABS_API_KEY and ELEVENLABS_VOICE_ID:
-                    with st.spinner("Generating voice..."):
-                        audio_data = synthesize_speech(response)
-                        if audio_data:
-                            st.audio(audio_data, format="audio/mpeg")
-
+            if st.button("Reset", key="clear_selection"):
+                st.session_state.selected_passage = None
+                st.session_state.learning_history = []
                 st.rerun()
-            else:
-                st.warning("Please enter a question!")
-
-        # Display conversation history
-        st.markdown("---")
-        st.markdown("**Conversation:**")
-
-        for msg in st.session_state.learning_history[-10:]:  # Show last 10 messages
-            if msg["role"] == "user":
-                if msg.get("passage"):
-                    st.markdown(f"""
-                    <div class="guide-message user-message">
-                        <strong>📝 Passage:</strong><br>
-                        <em>"{msg['passage'][:100]}..."</em><br><br>
-                        <strong>You:</strong> {msg["content"]}
-                    </div>
-                    """, unsafe_allow_html=True)
-                else:
-                    st.markdown(f"""
-                    <div class="guide-message user-message">
-                        <strong>You:</strong> {msg["content"]}
-                    </div>
-                    """, unsafe_allow_html=True)
-            else:
-                st.markdown(f"""
-                <div class="guide-message vonnegut-message">
-                    <strong>Kurt:</strong> {msg["content"]}<br>
-                    <small style="color: #8B4513;"><em>*Educational simulation*</em></small>
+        else:
+            st.markdown(
+                """
+                <div class="empty-state-card">
+                    Select a passage on the left to start a conversation.
                 </div>
-                """, unsafe_allow_html=True)
+                """,
+                unsafe_allow_html=True
+            )
+
+        conversation = st.session_state.learning_history[-8:]
+
+        if conversation:
+            for msg in conversation:
+                if msg["role"] == "user":
+                    card = f"""
+                    <div class="guide-message user-message">
+                        <strong>You:</strong> {format_text_for_display(msg['content'])}
+                    </div>
+                    """
+                else:
+                    card = f"""
+                    <div class="guide-message vonnegut-message">
+                        <strong>Kurt:</strong> {msg['content']}<br>
+                        <small class="sim-note"><em>*Educational simulation*</em></small>
+                    </div>
+                    """
+                st.markdown(card, unsafe_allow_html=True)
+
+        quick_cols = st.columns(2)
+        with quick_cols[0]:
+            if st.button("Explain this", key="explain_btn", disabled=not selected_passage):
+                submit_learning_question(
+                    QUICK_ACTION_PROMPTS["explain"],
+                    passage=selected_passage,
+                    voice_enabled=voice_enabled
+                )
+                st.rerun()
+
+        with quick_cols[1]:
+            if st.button("Themes", key="themes_btn", disabled=not selected_passage):
+                submit_learning_question(
+                    QUICK_ACTION_PROMPTS["themes"],
+                    passage=selected_passage,
+                    voice_enabled=voice_enabled
+                )
+                st.rerun()
+
+        followup = st.text_input(
+            "Follow-up question",
+            placeholder="Add another question about this passage...",
+            key="followup_question"
+        )
+        cols_actions = st.columns([2, 1])
+        with cols_actions[0]:
+            if st.button("Send", key="guide_send"):
+                if followup.strip():
+                    submit_learning_question(
+                        followup,
+                        passage=selected_passage,
+                        voice_enabled=voice_enabled
+                    )
+                    st.session_state.followup_question = ""
+                    st.rerun()
+                else:
+                    st.warning("Enter a question or select a passage to use quick actions.")
+
+        with cols_actions[1]:
+            voice_enabled = st.checkbox("🔊 Voice", value=voice_enabled, key="guide_voice")
+
+        if st.button("Clear conversation", key="clear_learning_history", disabled=not conversation):
+            st.session_state.learning_history = []
+            st.rerun()
 
 def main():
     # Set page config
@@ -522,7 +862,7 @@ def main():
         page_title="Vonnegut Learning Guide",
         page_icon="📚",
         layout="wide",
-        initial_sidebar_state="expanded"
+        initial_sidebar_state="collapsed"
     )
 
     # Custom CSS
@@ -530,7 +870,11 @@ def main():
     <style>
     @import url('https://fonts.googleapis.com/css2?family=Courier+Prime:wght@400;700&display=swap');
 
-    /* Video Background */
+    body, .stApp {
+        background-color: #0f0904;
+        font-family: 'Courier Prime', monospace;
+    }
+
     .video-background {
         position: fixed;
         top: 0;
@@ -539,170 +883,229 @@ def main():
         height: 100vh;
         z-index: -1;
         overflow: hidden;
-        opacity: 0.3;
-        filter: sepia(60%) hue-rotate(20deg) saturate(0.7) brightness(1.1) contrast(0.7);
+        opacity: 0.18;
+        filter: grayscale(0.2) sepia(0.5) contrast(0.8);
         pointer-events: none;
     }
 
+    .block-container {
+        max-width: 1200px;
+        padding-top: 2rem;
+    }
+
     .stApp > div, .main, .block-container {
-        position: relative !important;
-        z-index: 50 !important;
-        background: rgba(43, 27, 10, 0.1);
-        font-family: 'Courier Prime', monospace;
-    }
-
-    .stMarkdown, .stColumns, .element-container {
-        position: relative !important;
-        z-index: 55 !important;
-    }
-
-    .stTextInput, .stTextArea {
-        position: relative !important;
-        z-index: 60 !important;
-    }
-
-    section[data-testid="stSidebar"] {
-        position: relative !important;
-        z-index: 70 !important;
-        background: rgba(240, 242, 246, 0.9) !important;
-        backdrop-filter: blur(10px);
-    }
-
-    .main .stMarkdown, .main .stText, .main p, .main div, .main span, .main label {
-        color: #F4E8D0 !important;
-    }
-
-    section[data-testid="stSidebar"] {
-        background-color: #f0f2f6 !important;
-    }
-
-    section[data-testid="stSidebar"] .stMarkdown,
-    section[data-testid="stSidebar"] p,
-    section[data-testid="stSidebar"] div,
-    section[data-testid="stSidebar"] span,
-    section[data-testid="stSidebar"] label,
-    section[data-testid="stSidebar"] h1,
-    section[data-testid="stSidebar"] h2,
-    section[data-testid="stSidebar"] h3 {
-        color: #262730 !important;
+        background: rgba(8, 6, 4, 0.85);
     }
 
     .vonnegut-title {
-        font-family: 'Courier Prime', monospace;
-        font-size: 3rem;
+        font-size: 2.6rem;
         font-weight: 700;
-        color: #D2691E !important;
-        text-align: center;
-        margin-bottom: 0.5rem;
-        text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+        color: #f7d7a6 !important;
+        text-align: left;
+        margin-bottom: 0.2rem;
+        text-shadow: 0 4px 20px rgba(0,0,0,0.5);
     }
 
     .vonnegut-subtitle {
-        font-family: 'Courier Prime', monospace;
-        font-size: 1.2rem;
-        color: #CD853F !important;
-        text-align: center;
-        margin-bottom: 2rem;
+        font-size: 1rem;
+        color: #e2b071 !important;
+        margin-bottom: 0.5rem;
         font-style: italic;
     }
 
-    .disclaimer-banner {
-        background-color: rgba(139, 69, 19, 0.3);
-        border: 2px solid #D2691E;
-        border-radius: 8px;
-        padding: 1rem;
-        margin-bottom: 1.5rem;
-        color: #F4E8D0 !important;
+    .guide-section-title {
         text-align: center;
-        font-family: 'Courier Prime', monospace;
+        color: #f7d7a6;
+        margin-top: 0.5rem;
+        margin-bottom: 0.8rem;
+        font-size: 1.3rem;
+        letter-spacing: 0.05em;
     }
 
-    .chat-message {
-        background-color: rgba(255, 248, 220, 0.95);
-        border: 2px solid #8B4513;
-        border-radius: 10px;
-        padding: 1rem;
-        margin: 1rem 0;
-        font-family: 'Courier Prime', monospace;
-        color: #2B1B0A !important;
+    .warning-strip {
+        text-align: center;
+        background: rgba(210, 105, 30, 0.18);
+        border: 1px solid rgba(210, 105, 30, 0.4);
+        border-radius: 999px;
+        padding: 0.35rem 1rem;
+        color: #f8ead1;
+        font-size: 0.9rem;
+        margin-bottom: 1.2rem;
+    }
+
+    .reading-pane-wrapper {
         position: relative;
-        z-index: 60;
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        border-radius: 14px;
+        padding: 1.2rem;
+        background: rgba(22, 12, 6, 0.75);
+        max-height: 560px;
+        overflow-y: auto;
+        box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.03);
+    }
+
+    .reading-pane-wrapper::-webkit-scrollbar {
+        width: 8px;
+    }
+
+    .reading-pane-wrapper::-webkit-scrollbar-thumb {
+        background-color: rgba(210, 105, 30, 0.5);
+        border-radius: 4px;
+    }
+
+    .interactive-reading {
+        color: #f8efd5;
+        line-height: 1.5;
+        font-size: 0.95rem;
+        white-space: normal;
+    }
+
+    .selection-toolbar {
+        position: absolute;
+        display: flex;
+        gap: 0.45rem;
+        background: #fef1da;
+        color: #321a0a;
+        padding: 0.35rem 0.6rem;
+        border-radius: 999px;
+        box-shadow: 0 12px 30px rgba(0,0,0,0.35);
+        transform: translate(-50%, -120%);
+        z-index: 90;
+    }
+
+    .selection-toolbar button {
+        border: none;
+        background: transparent;
+        color: #321a0a;
+        font-weight: 700;
+        cursor: pointer;
+    }
+
+    .selection-hidden {
+        opacity: 0;
+        pointer-events: none;
+    }
+
+    .selected-passage-card,
+    .empty-state-card {
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        border-radius: 12px;
+        padding: 0.9rem;
+        background: rgba(255, 255, 255, 0.04);
+        margin-bottom: 0.8rem;
+        color: #f8efd5;
+    }
+
+    .selected-passage-card p {
+        margin: 0.4rem 0 0;
+    }
+
+    .selected-label {
+        font-size: 0.8rem;
+        letter-spacing: 0.08em;
+        color: #e6ba7e;
+        text-transform: uppercase;
     }
 
     .guide-message {
-        background-color: rgba(255, 248, 220, 0.95);
-        border: 2px solid #8B4513;
-        border-radius: 8px;
-        padding: 0.8rem;
-        margin: 0.8rem 0;
-        font-family: 'Courier Prime', monospace;
-        color: #2B1B0A !important;
-        font-size: 0.9rem;
-    }
-
-    .user-message {
-        background-color: rgba(255, 248, 220, 0.9);
-        border-color: #8B4513;
-    }
-
-    .vonnegut-message {
-        background-color: rgba(255, 248, 220, 0.95);
-        border-color: #D2691E;
-    }
-
-    .reading-pane {
-        background-color: rgba(255, 248, 220, 0.95);
-        border: 2px solid #8B4513;
         border-radius: 10px;
-        padding: 1rem;
-        font-family: 'Courier Prime', monospace;
-        color: #2B1B0A !important;
+        padding: 0.9rem;
+        margin: 0.6rem 0;
+        font-size: 0.95rem;
+        background: rgba(255, 255, 255, 0.07);
+        border: 1px solid rgba(255, 255, 255, 0.08);
     }
 
-    .stTextInput > div > div > input, .stTextArea > div > div > textarea {
-        background-color: #3D2914 !important;
-        color: #F4E8D0 !important;
-        border: 1px solid #8B4513 !important;
-        font-family: 'Courier Prime', monospace;
+    .guide-message.user-message {
+        border-left: 4px solid rgba(210, 105, 30, 0.6);
     }
 
-    .stTextInput > div > div > input::placeholder, .stTextArea > div > div > textarea::placeholder {
-        color: #CD853F !important;
-        opacity: 0.8;
+    .guide-message.vonnegut-message {
+        border-left: 4px solid rgba(255, 255, 255, 0.4);
+    }
+
+    .guide-message strong {
+        color: #f7d7a6;
+    }
+
+    .sim-note {
+        color: #e2b071;
+    }
+
+    .upload-hint {
+        font-size: 0.85rem;
+        color: rgba(248, 239, 213, 0.8);
+        margin-top: 0.8rem;
+        margin-bottom: 0.3rem;
     }
 
     .stButton > button {
-        background-color: #D2691E !important;
-        color: #2B1B0A !important;
-        border: none;
-        font-family: 'Courier Prime', monospace;
+        border-radius: 999px;
+        border: 1px solid rgba(210, 105, 30, 0.7);
+        background: linear-gradient(90deg, rgba(210, 105, 30, 0.9), rgba(210, 105, 30, 0.75));
+        color: #1b0f05 !important;
         font-weight: 700;
+        min-width: 110px;
     }
 
-    .stSelectbox > div > div {
-        background-color: #3D2914 !important;
-        color: #F4E8D0 !important;
-        border: 1px solid #8B4513 !important;
+    .stButton > button:disabled {
+        opacity: 0.4;
+        cursor: not-allowed;
     }
 
-    .stCheckbox label {
-        color: #F4E8D0 !important;
+    .stTextInput > div > div,
+    .stTextArea > div > div {
+        border-radius: 10px;
+        border: 1px solid rgba(255, 255, 255, 0.15);
+        background: rgba(255, 255, 255, 0.04);
+    }
+
+    .stTextInput input,
+    .stTextArea textarea {
+        color: #f8efd5 !important;
+        background: transparent !important;
+    }
+
+    .stTextInput input::placeholder,
+    .stTextArea textarea::placeholder {
+        color: rgba(248, 239, 213, 0.6);
     }
 
     .stTabs [data-baseweb="tab-list"] {
-        gap: 8px;
+        justify-content: center;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.08);
     }
 
     .stTabs [data-baseweb="tab"] {
-        background-color: rgba(61, 41, 20, 0.5);
-        color: #F4E8D0;
-        border-radius: 8px 8px 0 0;
-        font-family: 'Courier Prime', monospace;
+        background: transparent;
+        color: rgba(247, 215, 166, 0.6);
+        font-weight: 700;
     }
 
     .stTabs [aria-selected="true"] {
-        background-color: #D2691E !important;
-        color: #2B1B0A !important;
+        color: #f7d7a6 !important;
+        border-bottom: 3px solid #d2691e !important;
+    }
+
+    .about-panel {
+        position: relative;
+        margin-bottom: 1rem;
+        border-radius: 16px;
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        background: rgba(18, 11, 6, 0.9);
+        padding: 1.2rem;
+        color: #f8efd5;
+        box-shadow: 0 12px 30px rgba(0,0,0,0.35);
+    }
+
+    .about-panel h4 {
+        margin-top: 0;
+        color: #f7d7a6;
+    }
+
+    .about-panel .quote {
+        font-style: italic;
+        color: #e2b071;
     }
     </style>
 
@@ -714,6 +1117,7 @@ def main():
         allowfullscreen>
     </iframe>
     """, unsafe_allow_html=True)
+
 
     # Password protection
     if "authenticated" not in st.session_state:
@@ -738,38 +1142,67 @@ def main():
 
     if "learning_history" not in st.session_state:
         st.session_state.learning_history = []
+    if "selected_passage" not in st.session_state:
+        st.session_state.selected_passage = None
 
-    # Sidebar
-    with st.sidebar:
-        st.markdown("### About This Learning Guide")
-        st.markdown("""
-        **Kurt Vonnegut Jr.**
-        (1922-2007)
+    if "followup_question" not in st.session_state:
+        st.session_state.followup_question = ""
 
-        Author of *Slaughterhouse-Five*, *Cat's Cradle*, and other masterworks.
+    if "show_about" not in st.session_state:
+        st.session_state.show_about = False
 
-        WWII veteran, POW survivor, and humanist philosopher.
+    # Header row with controls
+    header_cols = st.columns([5, 1.2, 1])
+    with header_cols[0]:
+        st.markdown('<div class="vonnegut-title">Vonnegut Learning Guide</div>', unsafe_allow_html=True)
+        st.markdown('<div class="vonnegut-subtitle">"Listen: If this isn\'t nice, what is?"</div>', unsafe_allow_html=True)
 
-        ---
+    with header_cols[1]:
+        if st.button("ℹ️ About", key="about_button"):
+            st.session_state.show_about = True
 
-        **How to Use:**
-
-        📖 **Chat Mode:** Classic conversation
-
-        📚 **Learning Guide:** Read texts and get interactive explanations
-
-        ---
-
-        *"We are what we pretend to be, so we must be careful about what we pretend to be."*
-        """)
-
-        if st.button("Clear All Conversations"):
+    with header_cols[2]:
+        if st.button("Clear chats", key="clear_all_conversations"):
             st.session_state.conversation_history = []
             st.session_state.learning_history = []
+            st.session_state.selected_passage = None
+            st.session_state.followup_question = ""
             st.rerun()
 
-    # Main interface
-    st.markdown('<div class="vonnegut-title">Vonnegut Learning Guide</div>', unsafe_allow_html=True)
+    st.markdown(
+        """
+        <div class="warning-strip">
+            Educational simulation - AI trained on public Vonnegut sources.
+        </div>
+        """,
+        unsafe_allow_html=True
+    )
+
+    if st.session_state.show_about:
+        st.markdown(
+            """
+            <div class="about-panel">
+                <h4>About this Learning Guide</h4>
+                <p><strong>Kurt Vonnegut Jr.</strong> (1922-2007) - author of <em>Slaughterhouse-Five</em>, <em>Cat's Cradle</em>, and other humanist classics. WWII veteran, POW survivor, teacher, and wit.</p>
+                <ul>
+                    <li>💬 <strong>Chat Mode:</strong> Classic free-form conversation.</li>
+                    <li>📚 <strong>Learning Guide:</strong> Highlight public-domain texts and get literary feedback.</li>
+                    <li>🎧 <strong>Voice (optional):</strong> ElevenLabs integration for spoken replies.</li>
+                </ul>
+                <p class="quote">"We are what we pretend to be, so we must be careful about what we pretend to be."</p>
+            </div>
+            """,
+            unsafe_allow_html=True
+        )
+        close_cols = st.columns([6, 1])
+        with close_cols[1]:
+            if st.button("Close", key="close_about"):
+                st.session_state.show_about = False
+                st.rerun()
+
+    with st.sidebar:
+        render_profile_settings(key_prefix="sidebar_profile_")
+        render_vonnegut_avatar(position="inline")
 
     # Tabs for different modes
     tab1, tab2 = st.tabs(["💬 Chat with Kurt", "📚 Interactive Reading Guide"])
