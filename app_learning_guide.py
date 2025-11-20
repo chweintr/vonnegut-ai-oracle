@@ -45,103 +45,28 @@ READING_EXPERIENCE_OPTIONS = [
     "Dedicated scholar",
 ]
 
-HEYGEN_SHARE_PARAM = ("""
-    eyJxdWFsaXR5IjoiaGlnaCIsImF2YXRhck5hbWUiOiJjOTI4Y2ExMWM0YzU0MDgyYTY2ZjY2OTNl%0D%0A
-    YzRiMWIwOSIsInByZXZpZXdJbWciOiJodHRwczovL2ZpbGVzMi5oZXlnZW4uYWkvYXZhdGFyL3Yz%0D%0A
-    L2M5MjhjYTExYzRjNTQwODJhNjZmNjY5M2VjNGIxYjA5L2Z1bGwvMi4yL3ByZXZpZXdfdGFyZ2V0%0D%0A
-    LndlYnAiLCJuZWVkUmVtb3ZlQmFja2dyb3VuZCI6ZmFsc2UsImtub3dsZWRnZUJhc2VJZCI6IjVk%0D%0A
-    M2M5YTM5ZmE2NjRjNmRhNmIxYmRkNzNmMDYyNjU1IiwidXNlcm5hbWUiOiIyM2UzZDVmZWRjYTY0%0D%0A
-    M2Y4YjFjMzMwODNjM2FmZjJlNCJ9
-""")
+# Simli Configuration
+SIMLI_API_KEY = os.getenv("SIMLI_API_KEY")
+SIMLI_FACE_ID = os.getenv("SIMLI_FACE_ID")
 
-HEYGEN_WIDGET_HTML = f"""
-<style>
-  #heygen-streaming-embed {{
-    z-index: 9999;
-    position: fixed;
-    right: 30px;
-    bottom: 30px;
-    width: 300px;
-    height: 300px;
-    border-radius: 50%;
-    border: 3px solid #00CED1;
-    box-shadow: 0px 8px 24px rgba(0, 206, 209, 0.3);
-    transition: all 0.15s ease;
-    overflow: hidden;
-    cursor: pointer;
-  }}
-
-  #heygen-streaming-embed.expand {{
-    width: 700px;
-    height: 500px;
-    max-width: 90vw;
-    border-radius: 12px;
-    border: 0;
-  }}
-
-  @media (max-width: 640px) {{
-    #heygen-streaming-embed {{
-      right: 10px;
-      bottom: 10px;
-      width: 200px;
-      height: 200px;
-    }}
-
-    #heygen-streaming-embed.expand {{
-      width: 95%;
-      right: 2.5%;
-      height: 400px;
-    }}
-  }}
-
-  #heygen-streaming-container,
-  #heygen-streaming-container iframe {{
-    width: 100%;
-    height: 100%;
-    border: 0;
-  }}
-</style>
-<div id='heygen-streaming-embed'>
-  <div id='heygen-streaming-container'>
-    <iframe
-      id='heygen-streaming-iframe'
-      title='Vonnegut interactive head'
-      allow='microphone *; camera *; autoplay'
-      loading='eager'
-      src='https://labs.heygen.com/guest/streaming-embed?share={{HEYGEN_SHARE_PARAM}}&inIFrame=1&defaultMode=voice&autoStartVoice=true'>
-    </iframe>
-  </div>
-</div>
-<script>
-  (function(){{
-    const host = "https://labs.heygen.com";
-    const wrap = document.getElementById('heygen-streaming-embed');
-    window.addEventListener('message', (event) => {{
-      if (event.origin !== host || !event.data || event.data.type !== 'streaming-embed') {{
-        return;
-      }}
-      if (event.data.action === 'show') {{
-        wrap.classList.add('expand');
-      }} else if (event.data.action === 'hide') {{
-        wrap.classList.remove('expand');
-      }}
-    }});
-  }})();
-</script>
-
-"""
-
-HEYGEN_INLINE_HTML = Path("templates_heygen_inline.html").read_text().replace("__HEYGEN_SHARE__", HEYGEN_SHARE_PARAM)
-
-def render_vonnegut_avatar(position="floating"):
-    """Render HeyGen avatar inside the Streamlit layout."""
-    if not st.session_state.get("enable_avatar", True):
+def render_simli_avatar():
+    """Render Simli avatar inside the Streamlit layout."""
+    if not SIMLI_API_KEY or not SIMLI_FACE_ID:
+        st.warning("Simli API Key or Face ID missing in environment variables.")
         return
 
-    if position == "inline":
-        components.html(HEYGEN_INLINE_HTML, height=360, scrolling=False)
-    else:
-        components.html(HEYGEN_WIDGET_HTML, height=520, scrolling=False)
+    # Placeholder for Simli Embed - Replace with actual embed code when available
+    simli_html = f"""
+    <div style="width: 100%; height: 520px; background-color: #000; display: flex; justify-content: center; align-items: center; color: white; border: 1px solid #333; border-radius: 8px;">
+        <p>Simli Avatar Placeholder</p>
+        <!-- 
+        Actual Simli Embed Code would go here.
+        Typically involves an iframe or script tag using SIMLI_FACE_ID.
+        -->
+    </div>
+    """
+    components.html(simli_html, height=520, scrolling=False)
+
 
 LEARNING_FOCUS_OPTIONS = [
     "Historical context",
@@ -157,6 +82,16 @@ RESPONSE_DEPTH_OPTIONS = ["Concise", "Balanced", "In-depth"]
 BASE_PROMPT_PATH = Path("prompts_base_prompt.txt")
 EDUCATIONAL_MODE_PROMPT = Path("prompts/educational_mode.txt").read_text(encoding="utf-8")
 PASSAGE_CONTEXT_PROMPT = Path("prompts/passage_context_template.txt").read_text(encoding="utf-8")
+
+def get_video_base64():
+    """Encode video file as base64 for embedding"""
+    try:
+        with open("vonnegut_blinking.mp4", "rb") as video_file:
+            video_bytes = video_file.read()
+            video_base64 = base64.b64encode(video_bytes).decode()
+            return video_base64
+    except FileNotFoundError:
+        return ""
 
 # Load environment variables
 load_dotenv()
@@ -700,79 +635,119 @@ def learning_guide_interface():
     text_library, missing_excerpts = load_text_library()
     selection_event = None
 
-    if not knowledge_base.index_available():
+    # Layout: 2 Columns
+    col_left, col_right = st.columns([1, 1], gap="large")
+
+    with col_left:
+        st.markdown("### 📄 Import Text")
+        st.markdown("<div class='upload-hint'>Upload a .txt file to analyze.</div>", unsafe_allow_html=True)
+        uploaded_file = st.file_uploader("Upload a text file", type=['txt'], key="reading_upload", label_visibility="collapsed")
+
         st.markdown(
             """
-            <div class="vlg-alert">
-                <div>
-                    <h3>Corpus index missing</h3>
-                    <p>Run <code>python build_corpus_index.py</code> after you paste private excerpts so Kurt can cite authentic passages.</p>
+            <div class="vlg-section">
+                <h2 class="vlg-section-title">Reading pane</h2>
+                <p class="vlg-section-subtitle">Highlight any sentence or paragraph, then choose Ask Kurt or explore themes.</p>
+            </div>
+            """,
+            unsafe_allow_html=True
+        )
+
+        if not knowledge_base.index_available():
+            st.markdown(
+                """
+                <div class="vlg-alert">
+                    <div>
+                        <h3>Corpus index missing</h3>
+                        <p>The knowledge base index is not found. Please rebuild it to enable citations.</p>
+                    </div>
                 </div>
-            </div>
-            """,
-            unsafe_allow_html=True
+                """,
+                unsafe_allow_html=True
+            )
+            if st.button("Rebuild Corpus Index", key="rebuild_corpus_btn"):
+                with st.spinner("Rebuilding corpus index..."):
+                    try:
+                        # Run the build script logic directly or via subprocess
+                        import subprocess
+                        result = subprocess.run(["python", "build_corpus_index.py"], capture_output=True, text=True)
+                        if result.returncode == 0:
+                            st.success("Corpus index built successfully! Please refresh the page.")
+                            knowledge_base.clear_cache()
+                            time.sleep(2)
+                            st.rerun()
+                        else:
+                            st.error(f"Failed to build index: {result.stderr}")
+                    except Exception as e:
+                        st.error(f"Error rebuilding index: {str(e)}")
+
+        text_options = ["-- Select a text --"] + list(text_library.keys()) if text_library else ["-- No texts available --"]
+        selected_text_name = st.selectbox(
+            "Library texts",
+            options=text_options,
+            index=0,
+            key="text_selector"
         )
 
-    st.markdown(
-        """
-        <div class="vlg-section">
-            <h2 class="vlg-section-title">Reading pane</h2>
-            <p class="vlg-section-subtitle">Highlight any sentence or paragraph, then choose Ask Kurt or explore themes.</p>
-        </div>
-        """,
-        unsafe_allow_html=True
-    )
+        text_content = None
+        component_key = "library"
 
-    if missing_excerpts:
-        missing_label = ", ".join(missing_excerpts)
-        st.markdown(
-            f"""
-            <div class="vlg-info">
-                <div>
-                    <strong>Private excerpts missing:</strong> {missing_label}. Drop 500–1000 word passages into <code>data/excerpts</code> before demos.
+        if text_library and selected_text_name != "-- Select a text --":
+            text_content = text_library[selected_text_name]
+            component_key = selected_text_name.replace(" ", "_").lower()
+
+        if uploaded_file:
+            text_content = uploaded_file.read().decode('utf-8')
+            component_key = f"upload_{uploaded_file.name.replace(' ', '_').lower()}"
+
+        if text_content:
+            selection_event = display_reading_text(text_content, component_key=component_key)
+            st.caption("Tip: Select a paragraph above or paste your own passage.")
+        else:
+            st.markdown(
+                """
+                <div class="empty-state-card">
+                    Load a library text or upload your own .txt file to begin.
                 </div>
-            </div>
-            """,
-            unsafe_allow_html=True
-        )
+                """,
+                unsafe_allow_html=True
+            )
 
-    text_options = ["-- Select a text --"] + list(text_library.keys()) if text_library else ["-- No texts available --"]
-    selected_text_name = st.selectbox(
-        "Library texts",
-        options=text_options,
-        index=0,
-        key="text_selector"
-    )
+    with col_right:
+        # Simli Avatar Container
+        st.markdown("#### 🤖 Vonnebot")
+        
+        # Render Simli based on mode
+        if st.session_state.interaction_mode == "Talk":
+            render_simli_avatar()
+        else:
+            # Idle State - Static Image or Video Loop
+            st.markdown(
+                """
+                <div style="width: 100%; height: 520px; background-color: #111; display: flex; justify-content: center; align-items: center; border: 1px solid #333; border-radius: 8px; overflow: hidden;">
+                    <div style="text-align: center; color: #666;">
+                        <p style="font-size: 48px; margin-bottom: 10px;">😴</p>
+                        <p>Vonnebot is listening via Text</p>
+                    </div>
+                </div>
+                """,
+                unsafe_allow_html=True
+            )
 
-    text_content = None
-    component_key = "library"
+        # Mode Toggle Buttons
+        st.write("") # Spacer
+        mode_cols = st.columns(2)
+        with mode_cols[0]:
+            if st.button("📝 Text Mode", use_container_width=True, type="primary" if st.session_state.interaction_mode == "Text" else "secondary"):
+                st.session_state.interaction_mode = "Text"
+                st.rerun()
+        with mode_cols[1]:
+            if st.button("🗣️ Talk Mode", use_container_width=True, type="primary" if st.session_state.interaction_mode == "Talk" else "secondary"):
+                st.session_state.interaction_mode = "Talk"
+                st.rerun()
 
-    if text_library and selected_text_name != "-- Select a text --":
-        text_content = text_library[selected_text_name]
-        component_key = selected_text_name.replace(" ", "_").lower()
-
-    st.markdown("<div class='upload-hint'>Need a different text? Upload a .txt file.</div>", unsafe_allow_html=True)
-    uploaded_file = st.file_uploader("Upload a text file", type=['txt'], key="reading_upload")
-
-    if uploaded_file:
-        text_content = uploaded_file.read().decode('utf-8')
-        component_key = f"upload_{uploaded_file.name.replace(' ', '_').lower()}"
-
-    if text_content:
-        selection_event = display_reading_text(text_content, component_key=component_key)
-        st.caption("Tip: Select a paragraph above or paste your own passage.")
-    else:
-        st.markdown(
-            """
-            <div class="empty-state-card">
-                Load a library text or upload your own .txt file to begin.
-            </div>
-            """,
-            unsafe_allow_html=True
-        )
-
-    with st.sidebar:
-        st.markdown("#### 💬 Ask Kurt (Literary Guide)")
+        st.markdown("---")
+        st.markdown("#### 💬 Conversation")
 
         selected_passage = st.session_state.get("selected_passage")
         voice_enabled = st.session_state.get("guide_voice", False)
@@ -855,24 +830,26 @@ def learning_guide_interface():
                 )
                 st.rerun()
 
-        followup = st.text_input(
-            "Follow-up question",
-            placeholder="Add another question about this passage...",
-            key="followup_question"
+        # General Chat Input
+        user_question = st.text_input(
+            "Ask Vonnebot...",
+            placeholder="Type your question here...",
+            key="guide_user_question"
         )
+        
         cols_actions = st.columns([2, 1])
         with cols_actions[0]:
             if st.button("Send", key="guide_send"):
-                if followup.strip():
+                if user_question.strip():
                     submit_learning_question(
-                        followup,
-                        passage=selected_passage,
+                        user_question,
+                        passage=selected_passage, # Will be None if not selected, or the text if selected
                         voice_enabled=voice_enabled
                     )
-                    st.session_state.followup_question = ""
+                    st.session_state.guide_user_question = "" # Clear input
                     st.rerun()
                 else:
-                    st.warning("Enter a question or select a passage to use quick actions.")
+                    st.warning("Please enter a question.")
 
         with cols_actions[1]:
             voice_enabled = st.checkbox("🔊 Voice", value=voice_enabled, key="guide_voice")
@@ -894,6 +871,20 @@ def main():
     st.markdown("""
     <style>
     @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@500;600;700&family=Inter:wght@400;500;600&display=swap');
+
+    /* Video Background */
+    .video-background {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100vw;
+        height: 100vh;
+        z-index: -1;
+        object-fit: cover;
+        opacity: 0.3;
+        filter: sepia(60%) hue-rotate(20deg) saturate(0.7) brightness(1.1) contrast(0.7);
+        pointer-events: none;
+    }
 
     :root {
         --vlg-bg: #050608;
@@ -1257,7 +1248,13 @@ def main():
         }
     }
     </style>
+    
+    <!-- Video Background -->""" + ("""
+    <video class="video-background" autoplay muted loop>
+        <source src="data:video/mp4;base64,""" + get_video_base64() + """" type="video/mp4">
+    </video>""" if get_video_base64() else "") + """
     """, unsafe_allow_html=True)
+
 
 
     st.markdown("<div class='vlg-root'>", unsafe_allow_html=True)
@@ -1265,13 +1262,9 @@ def main():
         """
         <header class="vlg-header">
             <div class="vlg-header-inner">
-                <h1 class="vlg-title">Vonnegut Learning Guide</h1>
+                <h1 class="vlg-title">Vonnebot Reading Companion</h1>
                 <p class="vlg-quote">“Listen. If this is not nice, what is?”</p>
                 <p class="vlg-tagline">Educational simulation. AI trained on public Vonnegut sources.</p>
-                <p class="vlg-description">
-                    Dark reading room vibes with warm paper accents. Highlight real passages, keep the column narrow,
-                    and leave breathing room for the agent dock.
-                </p>
             </div>
         </header>
         """,
@@ -1320,17 +1313,8 @@ def main():
     if "enable_avatar" not in st.session_state:
         st.session_state.enable_avatar = True
 
-    st.markdown(
-        """
-        <div class="vlg-alert">
-            <div>
-                <h3>Educational simulation</h3>
-                <p>Ground answers in authentic Vonnegut material you control. Add private excerpts locally and rebuild the corpus index regularly.</p>
-            </div>
-        </div>
-        """,
-        unsafe_allow_html=True
-    )
+    if "interaction_mode" not in st.session_state:
+        st.session_state.interaction_mode = "Text"  # Options: "Text", "Talk"
 
     with st.sidebar:
         render_profile_settings(key_prefix="sidebar_profile_")
@@ -1370,7 +1354,9 @@ def main():
     )
 
     st.markdown("</main>", unsafe_allow_html=True)
-    render_vonnegut_avatar(position="floating")
+    st.markdown("</main>", unsafe_allow_html=True)
+    # render_simli_avatar() # Now rendered inside the right column of the interface
+    st.markdown("</div>", unsafe_allow_html=True)
     st.markdown("</div>", unsafe_allow_html=True)
 
 if __name__ == "__main__":
