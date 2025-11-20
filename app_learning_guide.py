@@ -48,6 +48,7 @@ READING_EXPERIENCE_OPTIONS = [
 # Simli Configuration
 SIMLI_API_KEY = os.getenv("SIMLI_API_KEY")
 SIMLI_FACE_ID = os.getenv("SIMLI_FACE_ID")
+SIMLI_AGENT_ID = os.getenv("SIMLI_AGENT_ID")
 
 def render_simli_avatar():
     """Render Simli avatar inside the Streamlit layout."""
@@ -56,12 +57,17 @@ def render_simli_avatar():
         return
 
     # Placeholder for Simli Embed - Replace with actual embed code when available
+    # User Note: Face ID = Visuals, Agent ID = Brains/Voice
+    agent_info = f"Agent ID: {SIMLI_AGENT_ID}" if SIMLI_AGENT_ID else "Agent ID: Not configured"
+    
     simli_html = f"""
-    <div style="width: 100%; height: 520px; background-color: #000; display: flex; justify-content: center; align-items: center; color: white; border: 1px solid #333; border-radius: 8px;">
-        <p>Simli Avatar Placeholder</p>
+    <div style="width: 100%; height: 520px; background-color: #000; display: flex; flex-direction: column; justify-content: center; align-items: center; color: white; border: 1px solid #333; border-radius: 8px;">
+        <p style="font-size: 18px; font-weight: bold;">Simli Avatar Active</p>
+        <p style="color: #888; margin-top: 10px;">Face ID: {SIMLI_FACE_ID}</p>
+        <p style="color: #888;">{agent_info}</p>
         <!-- 
         Actual Simli Embed Code would go here.
-        Typically involves an iframe or script tag using SIMLI_FACE_ID.
+        It likely needs both faceId and agentId/characterId.
         -->
     </div>
     """
