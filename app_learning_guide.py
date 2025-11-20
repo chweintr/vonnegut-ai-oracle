@@ -9,7 +9,6 @@ from dotenv import load_dotenv
 import time
 from pathlib import Path
 from html import escape
-import textwrap
 
 import knowledge_base
 
@@ -60,7 +59,7 @@ HEYGEN_WIDGET_HTML = f"""
   #heygen-streaming-embed {{
     z-index: 9999;
     position: fixed;
-    left: 30px;
+    right: 30px;
     bottom: 30px;
     width: 300px;
     height: 300px;
@@ -82,7 +81,7 @@ HEYGEN_WIDGET_HTML = f"""
 
   @media (max-width: 640px) {{
     #heygen-streaming-embed {{
-      left: 10px;
+      right: 10px;
       bottom: 10px;
       width: 200px;
       height: 200px;
@@ -90,7 +89,7 @@ HEYGEN_WIDGET_HTML = f"""
 
     #heygen-streaming-embed.expand {{
       width: 95%;
-      left: 2.5%;
+      right: 2.5%;
       height: 400px;
     }}
   }}
@@ -583,7 +582,10 @@ def format_text_for_display(text):
 
 def chat_interface():
     """Original chat interface"""
-    st.markdown('<div class="vonnegut-subtitle">Classic Conversation Mode</div>', unsafe_allow_html=True)
+    st.markdown(
+        '<p class="vlg-section-subtitle">Classic conversation mode. Ask anything and keep Kurt grounded in authentic texts.</p>',
+        unsafe_allow_html=True
+    )
 
     # Display conversation history
     for msg in st.session_state.conversation_history:
@@ -695,25 +697,43 @@ def chat_interface():
 
 def learning_guide_interface():
     """Lean learning guide interface with highlight-to-ask workflow"""
-    st.markdown('<div class="guide-section-title">Interactive Reading & Learning Guide</div>', unsafe_allow_html=True)
-
     text_library, missing_excerpts = load_text_library()
     selection_event = None
 
     if not knowledge_base.index_available():
-        st.warning(
-            "Corpus index missing. Run `python build_corpus_index.py` after pasting your private excerpts to ground Kurt in authentic texts.",
-            icon="⚠️"
+        st.markdown(
+            """
+            <div class="vlg-alert">
+                <div>
+                    <h3>Corpus index missing</h3>
+                    <p>Run <code>python build_corpus_index.py</code> after you paste private excerpts so Kurt can cite authentic passages.</p>
+                </div>
+            </div>
+            """,
+            unsafe_allow_html=True
         )
 
-    st.markdown("#### 📖 Reading Pane")
-    st.caption("Highlight any sentence or paragraph, then choose Ask Kurt or Themes.")
+    st.markdown(
+        """
+        <div class="vlg-section">
+            <h2 class="vlg-section-title">Reading pane</h2>
+            <p class="vlg-section-subtitle">Highlight any sentence or paragraph, then choose Ask Kurt or explore themes.</p>
+        </div>
+        """,
+        unsafe_allow_html=True
+    )
 
     if missing_excerpts:
         missing_label = ", ".join(missing_excerpts)
-        st.info(
-            f"⚖️ Private excerpts missing: {missing_label}. Paste 500-1000 word passages into the matching files under `data/excerpts/` before demos.",
-            icon="ℹ️"
+        st.markdown(
+            f"""
+            <div class="vlg-info">
+                <div>
+                    <strong>Private excerpts missing:</strong> {missing_label}. Drop 500–1000 word passages into <code>data/excerpts</code> before demos.
+                </div>
+            </div>
+            """,
+            unsafe_allow_html=True
         )
 
     text_options = ["-- Select a text --"] + list(text_library.keys()) if text_library else ["-- No texts available --"]
@@ -731,10 +751,8 @@ def learning_guide_interface():
         text_content = text_library[selected_text_name]
         component_key = selected_text_name.replace(" ", "_").lower()
 
-    upload_placeholder = st.empty()
-    with upload_placeholder.container():
-        st.markdown("<div class='upload-hint'>Need a different text? Upload a .txt file.</div>", unsafe_allow_html=True)
-        uploaded_file = st.file_uploader("Upload a text file", type=['txt'], key="reading_upload")
+    st.markdown("<div class='upload-hint'>Need a different text? Upload a .txt file.</div>", unsafe_allow_html=True)
+    uploaded_file = st.file_uploader("Upload a text file", type=['txt'], key="reading_upload")
 
     if uploaded_file:
         text_content = uploaded_file.read().decode('utf-8')
@@ -744,7 +762,14 @@ def learning_guide_interface():
         selection_event = display_reading_text(text_content, component_key=component_key)
         st.caption("Tip: Select a paragraph above or paste your own passage.")
     else:
-        st.info("Load a library text or upload your own .txt file to begin.")
+        st.markdown(
+            """
+            <div class="empty-state-card">
+                Load a library text or upload your own .txt file to begin.
+            </div>
+            """,
+            unsafe_allow_html=True
+        )
 
     with st.sidebar:
         st.markdown("#### 💬 Ask Kurt (Literary Guide)")
@@ -868,78 +893,248 @@ def main():
     # Custom CSS
     st.markdown("""
     <style>
-    @import url('https://fonts.googleapis.com/css2?family=Courier+Prime:wght@400;700&display=swap');
+    @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@500;600;700&family=Inter:wght@400;500;600&display=swap');
+
+    :root {
+        --vlg-bg: #050608;
+        --vlg-bg-elevated: #151820;
+        --vlg-bg-soft: #1d212b;
+        --vlg-border-subtle: #272b36;
+        --vlg-accent: #f9c46b;
+        --vlg-accent-strong: #ff6b35;
+        --vlg-text: #f5f5f5;
+        --vlg-text-muted: #a1a6b4;
+        --vlg-link: #4fd0ff;
+        --vlg-danger: #f5a623;
+        --vlg-radius-lg: 18px;
+        --vlg-radius-xl: 24px;
+        --vlg-shadow-soft: 0 18px 40px rgba(0, 0, 0, 0.6);
+        --vlg-transition-fast: 150ms ease-out;
+    }
 
     body, .stApp {
-        background-color: #0f0904;
-        font-family: 'Courier Prime', monospace;
+        margin: 0;
+        font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+        background: radial-gradient(circle at top, #1b1d26 0, #050608 55%) fixed;
+        color: var(--vlg-text);
     }
 
-    .video-background {
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100vw;
-        height: 100vh;
-        z-index: -1;
-        overflow: hidden;
-        opacity: 0.18;
-        filter: grayscale(0.2) sepia(0.5) contrast(0.8);
-        pointer-events: none;
+    .stApp {
+        min-height: 100vh;
     }
 
-    .block-container {
-        max-width: 1200px;
-        padding-top: 2rem;
+    .main .block-container {
+        max-width: 1040px;
+        padding-top: 12px;
+        padding-bottom: 160px;
     }
 
-    .stApp > div, .main, .block-container {
-        background: rgba(8, 6, 4, 0.85);
+    .stMain, .main .block-container {
+        background: transparent;
     }
 
-    .vonnegut-title {
-        font-size: 2.6rem;
-        font-weight: 700;
-        color: #f7d7a6 !important;
-        text-align: left;
-        margin-bottom: 0.2rem;
-        text-shadow: 0 4px 20px rgba(0,0,0,0.5);
+    .stSidebar {
+        background: linear-gradient(180deg, rgba(9, 10, 15, 0.95), rgba(6, 7, 9, 0.92));
     }
 
-    .vonnegut-subtitle {
-        font-size: 1rem;
-        color: #e2b071 !important;
-        margin-bottom: 0.5rem;
+    .stSidebar, .stSidebar * {
+        color: var(--vlg-text) !important;
+    }
+
+    .stSidebar .stButton>button {
+        width: 100%;
+    }
+
+    .vlg-root {
+        width: 100%;
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+    }
+
+    .vlg-header {
+        padding: 32px 0 8px;
+    }
+
+    .vlg-header-inner {
+        max-width: 1040px;
+        margin: 0 auto;
+    }
+
+    .vlg-title {
+        margin: 0 0 8px;
+        font-family: 'Playfair Display', Georgia, serif;
+        font-size: 46px;
+        letter-spacing: 0.04em;
+    }
+
+    .vlg-quote {
+        margin: 0 0 4px;
         font-style: italic;
+        color: var(--vlg-text-muted);
     }
 
-    .guide-section-title {
-        text-align: center;
-        color: #f7d7a6;
-        margin-top: 0.5rem;
-        margin-bottom: 0.8rem;
-        font-size: 1.3rem;
-        letter-spacing: 0.05em;
-    }
-
-    .warning-strip {
-        text-align: center;
-        background: rgba(210, 105, 30, 0.18);
-        border: 1px solid rgba(210, 105, 30, 0.4);
+    .vlg-tagline {
+        margin: 0 0 20px;
+        padding: 8px 14px;
+        display: inline-flex;
+        align-items: center;
         border-radius: 999px;
-        padding: 0.35rem 1rem;
-        color: #f8ead1;
-        font-size: 0.9rem;
-        margin-bottom: 1.2rem;
+        background: rgba(10, 10, 10, 0.7);
+        border: 1px solid rgba(249, 196, 107, 0.4);
+        color: var(--vlg-text-muted);
+        font-size: 13px;
+    }
+
+    .vlg-description {
+        max-width: 640px;
+        color: rgba(245, 245, 245, 0.9);
+        margin: 0;
+    }
+
+    .vlg-main {
+        flex: 1;
+    }
+
+    .vlg-card {
+        background: linear-gradient(135deg, rgba(21, 24, 32, 0.96), rgba(9, 10, 16, 0.96));
+        border-radius: var(--vlg-radius-xl);
+        padding: 28px;
+        border: 1px solid rgba(255, 255, 255, 0.04);
+        box-shadow: var(--vlg-shadow-soft);
+        margin-bottom: 24px;
+    }
+
+    .vlg-alert {
+        display: flex;
+        gap: 14px;
+        padding: 14px 16px;
+        border-radius: 14px;
+        margin-bottom: 20px;
+        border: 1px solid rgba(245, 166, 35, 0.4);
+        background: radial-gradient(circle at top left, rgba(245, 166, 35, 0.25), transparent 65%),
+            rgba(30, 24, 8, 0.9);
+    }
+
+    .vlg-alert h3 {
+        margin: 0 0 4px;
+        font-size: 16px;
+    }
+
+    .vlg-alert p {
+        margin: 0;
+        font-size: 13px;
+        color: #fbdcaa;
+    }
+
+    .vlg-info {
+        display: flex;
+        gap: 12px;
+        padding: 10px 12px;
+        border-radius: 12px;
+        background: rgba(20, 32, 52, 0.95);
+        border: 1px solid rgba(79, 208, 255, 0.45);
+        font-size: 13px;
+        color: #dbefff;
+        margin-top: 12px;
+    }
+
+    .vlg-section {
+        margin-top: 24px;
+    }
+
+    .vlg-section-title {
+        font-size: 20px;
+        margin: 0 0 6px;
+        font-family: 'Playfair Display', Georgia, serif;
+    }
+
+    .vlg-section-subtitle {
+        margin: 0 0 16px;
+        font-size: 13px;
+        color: var(--vlg-text-muted);
+    }
+
+    .vlg-label {
+        display: block;
+        font-size: 13px;
+        margin-bottom: 6px;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        color: var(--vlg-text-muted);
+    }
+
+    .stTabs [data-baseweb="tab-list"] {
+        background: rgba(9, 10, 15, 0.9);
+        border-radius: 999px;
+        padding: 4px;
+        border: 1px solid var(--vlg-border-subtle);
+        gap: 4px;
+        justify-content: flex-start;
+        margin-bottom: 0;
+    }
+
+    .stTabs [role="tab"] {
+        border: none;
+        border-radius: 999px;
+        padding: 8px 18px;
+        color: var(--vlg-text-muted);
+        background: transparent;
+        gap: 8px;
+        font-weight: 500;
+    }
+
+    .stTabs [aria-selected="true"] {
+        background: linear-gradient(135deg, var(--vlg-accent), var(--vlg-accent-strong)) !important;
+        color: #1a1a1a !important;
+        box-shadow: 0 10px 24px rgba(0, 0, 0, 0.5);
+        font-weight: 600;
+    }
+
+    div[data-testid="stSelectbox"] label,
+    div[data-testid="stTextInput"] label,
+    div[data-testid="stTextArea"] label,
+    div[data-testid="stFileUploader"] label {
+        font-size: 13px;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        color: var(--vlg-text-muted);
+    }
+
+    div[data-testid="stSelectbox"] > div,
+    div[data-baseweb="select"] {
+        border-radius: 12px !important;
+        border: 1px solid var(--vlg-border-subtle);
+        background: var(--vlg-bg-soft);
+        color: var(--vlg-text);
+    }
+
+    textarea, input[type="text"] {
+        background: var(--vlg-bg-soft) !important;
+        border: 1px solid var(--vlg-border-subtle) !important;
+        border-radius: 12px !important;
+        color: var(--vlg-text) !important;
+    }
+
+    textarea:focus, input[type="text"]:focus {
+        border-color: var(--vlg-accent) !important;
+        box-shadow: 0 0 0 1px rgba(249, 196, 107, 0.4);
+    }
+
+    div[data-testid="stFileUploader"] > div {
+        border: 1px dashed rgba(148, 153, 170, 0.8);
+        border-radius: 16px;
+        background: rgba(13, 17, 26, 0.95);
+        padding: 16px;
     }
 
     .reading-pane-wrapper {
-        position: relative;
         border: 1px solid rgba(255, 255, 255, 0.08);
-        border-radius: 14px;
-        padding: 1.2rem;
-        background: rgba(22, 12, 6, 0.75);
-        max-height: 560px;
+        border-radius: 18px;
+        padding: 20px;
+        background: rgba(22, 24, 34, 0.9);
+        max-height: 520px;
+        min-height: 520px;
         overflow-y: auto;
         box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.03);
     }
@@ -949,184 +1144,156 @@ def main():
     }
 
     .reading-pane-wrapper::-webkit-scrollbar-thumb {
-        background-color: rgba(210, 105, 30, 0.5);
+        background-color: rgba(249, 196, 107, 0.5);
         border-radius: 4px;
     }
 
     .interactive-reading {
-        color: #f8efd5;
-        line-height: 1.5;
+        color: var(--vlg-text);
+        line-height: 1.6;
         font-size: 0.95rem;
-        white-space: normal;
     }
 
-    .selection-toolbar {
-        position: absolute;
-        display: flex;
-        gap: 0.45rem;
-        background: #fef1da;
-        color: #321a0a;
-        padding: 0.35rem 0.6rem;
-        border-radius: 999px;
-        box-shadow: 0 12px 30px rgba(0,0,0,0.35);
-        transform: translate(-50%, -120%);
-        z-index: 90;
-    }
-
-    .selection-toolbar button {
-        border: none;
-        background: transparent;
-        color: #321a0a;
-        font-weight: 700;
-        cursor: pointer;
-    }
-
-    .selection-hidden {
-        opacity: 0;
-        pointer-events: none;
-    }
-
-    .selected-passage-card,
-    .empty-state-card {
-        border: 1px solid rgba(255, 255, 255, 0.12);
-        border-radius: 12px;
-        padding: 0.9rem;
-        background: rgba(255, 255, 255, 0.04);
-        margin-bottom: 0.8rem;
-        color: #f8efd5;
-    }
-
-    .selected-passage-card p {
-        margin: 0.4rem 0 0;
+    .selected-passage-card {
+        border-radius: 16px;
+        padding: 16px;
+        background: rgba(249, 196, 107, 0.08);
+        border: 1px solid rgba(249, 196, 107, 0.25);
+        font-size: 0.9rem;
     }
 
     .selected-label {
-        font-size: 0.8rem;
+        font-size: 0.75rem;
         letter-spacing: 0.08em;
-        color: #e6ba7e;
-        text-transform: uppercase;
+        color: var(--vlg-text-muted);
+        margin-bottom: 6px;
+    }
+
+    .empty-state-card {
+        border-radius: 14px;
+        border: 1px dashed rgba(255, 255, 255, 0.2);
+        padding: 18px;
+        text-align: center;
+        color: var(--vlg-text-muted);
     }
 
     .guide-message {
-        border-radius: 10px;
-        padding: 0.9rem;
-        margin: 0.6rem 0;
-        font-size: 0.95rem;
-        background: rgba(255, 255, 255, 0.07);
-        border: 1px solid rgba(255, 255, 255, 0.08);
+        border-radius: 14px;
+        padding: 14px 16px;
+        margin-bottom: 12px;
+        font-size: 0.9rem;
+        line-height: 1.5;
     }
 
     .guide-message.user-message {
-        border-left: 4px solid rgba(210, 105, 30, 0.6);
+        background: rgba(79, 208, 255, 0.08);
+        border: 1px solid rgba(79, 208, 255, 0.3);
     }
 
     .guide-message.vonnegut-message {
-        border-left: 4px solid rgba(255, 255, 255, 0.4);
-    }
-
-    .guide-message strong {
-        color: #f7d7a6;
+        background: rgba(249, 196, 107, 0.08);
+        border: 1px solid rgba(249, 196, 107, 0.25);
     }
 
     .sim-note {
-        color: #e2b071;
+        color: var(--vlg-text-muted);
     }
 
     .upload-hint {
         font-size: 0.85rem;
-        color: rgba(248, 239, 213, 0.8);
-        margin-top: 0.8rem;
-        margin-bottom: 0.3rem;
+        color: var(--vlg-text-muted);
+        margin-bottom: 6px;
     }
 
-    .stButton > button {
+    .stButton>button {
         border-radius: 999px;
-        border: 1px solid rgba(210, 105, 30, 0.7);
-        background: linear-gradient(90deg, rgba(210, 105, 30, 0.9), rgba(210, 105, 30, 0.75));
-        color: #1b0f05 !important;
-        font-weight: 700;
-        min-width: 110px;
+        border: none;
+        padding: 10px 20px;
+        background: linear-gradient(135deg, var(--vlg-accent), var(--vlg-accent-strong));
+        color: #1a1a1a;
+        font-weight: 600;
+        transition: transform var(--vlg-transition-fast), box-shadow var(--vlg-transition-fast);
     }
 
-    .stButton > button:disabled {
+    .stButton>button:hover:not(:disabled) {
+        transform: translateY(-1px);
+        box-shadow: 0 8px 20px rgba(0, 0, 0, 0.4);
+    }
+
+    .stButton>button:disabled {
         opacity: 0.4;
-        cursor: not-allowed;
     }
 
-    .stTextInput > div > div,
-    .stTextArea > div > div {
-        border-radius: 10px;
-        border: 1px solid rgba(255, 255, 255, 0.15);
-        background: rgba(255, 255, 255, 0.04);
+    .stCheckbox label {
+        color: var(--vlg-text);
     }
 
-    .stTextInput input,
-    .stTextArea textarea {
-        color: #f8efd5 !important;
-        background: transparent !important;
+    .stMarkdown code {
+        background: rgba(0, 0, 0, 0.3);
+        border-radius: 6px;
+        padding: 2px 6px;
     }
 
-    .stTextInput input::placeholder,
-    .stTextArea textarea::placeholder {
-        color: rgba(248, 239, 213, 0.6);
+    .vlg-footer {
+        text-align: center;
+        color: var(--vlg-text-muted);
+        font-size: 0.85rem;
+        margin-top: 32px;
     }
 
-    .stTabs [data-baseweb="tab-list"] {
-        justify-content: center;
-        border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-    }
-
-    .stTabs [data-baseweb="tab"] {
-        background: transparent;
-        color: rgba(247, 215, 166, 0.6);
-        font-weight: 700;
-    }
-
-    .stTabs [aria-selected="true"] {
-        color: #f7d7a6 !important;
-        border-bottom: 3px solid #d2691e !important;
-    }
-
-    .about-panel {
-        position: relative;
-        margin-bottom: 1rem;
-        border-radius: 16px;
-        border: 1px solid rgba(255, 255, 255, 0.12);
-        background: rgba(18, 11, 6, 0.9);
-        padding: 1.2rem;
-        color: #f8efd5;
-        box-shadow: 0 12px 30px rgba(0,0,0,0.35);
-    }
-
-    .about-panel h4 {
-        margin-top: 0;
-        color: #f7d7a6;
-    }
-
-    .about-panel .quote {
-        font-style: italic;
-        color: #e2b071;
+    @media (max-width: 768px) {
+        .vlg-header {
+            padding-top: 18px;
+        }
+        .vlg-title {
+            font-size: 34px;
+        }
+        .vlg-card {
+            padding: 20px;
+        }
+        .main .block-container {
+            padding-left: 16px;
+            padding-right: 16px;
+        }
     }
     </style>
-
-    <!-- Video Background -->
-    <iframe
-        class="video-background"
-        src="https://www.youtube.com/embed/Rx1axzijDxY?autoplay=1&mute=1&loop=1&playlist=Rx1axzijDxY&controls=0&showinfo=0&rel=0&iv_load_policy=3&modestbranding=1&playsinline=1&playback_rate=0.75"
-        allow="autoplay; encrypted-media"
-        allowfullscreen>
-    </iframe>
     """, unsafe_allow_html=True)
 
+
+    st.markdown("<div class='vlg-root'>", unsafe_allow_html=True)
+    st.markdown(
+        """
+        <header class="vlg-header">
+            <div class="vlg-header-inner">
+                <h1 class="vlg-title">Vonnegut Learning Guide</h1>
+                <p class="vlg-quote">“Listen. If this is not nice, what is?”</p>
+                <p class="vlg-tagline">Educational simulation. AI trained on public Vonnegut sources.</p>
+                <p class="vlg-description">
+                    Dark reading room vibes with warm paper accents. Highlight real passages, keep the column narrow,
+                    and leave breathing room for the agent dock.
+                </p>
+            </div>
+        </header>
+        """,
+        unsafe_allow_html=True
+    )
+    st.markdown("<main class='vlg-main'>", unsafe_allow_html=True)
 
     # Password protection
     if "authenticated" not in st.session_state:
         st.session_state.authenticated = False
 
     if not st.session_state.authenticated:
-        st.markdown('<div class="vonnegut-title">Vonnegut Learning Guide</div>', unsafe_allow_html=True)
-        st.markdown('<div class="vonnegut-subtitle">"Listen: If this isn\'t nice, what is?"</div>', unsafe_allow_html=True)
-
+        st.markdown("<section class='vlg-card'>", unsafe_allow_html=True)
+        st.markdown(
+            """
+            <div class="vlg-section">
+                <h2 class="vlg-section-title">Unlock the reading room</h2>
+                <p class="vlg-section-subtitle">Enter the shared passcode to keep this demo private.</p>
+            </div>
+            """,
+            unsafe_allow_html=True
+        )
         password = st.text_input("Enter passcode:", type="password")
         if st.button("Enter"):
             if password == "tralfamadore":
@@ -1134,6 +1301,8 @@ def main():
                 st.rerun()
             else:
                 st.error("Wrong passcode. So it goes.")
+        st.markdown("</section>", unsafe_allow_html=True)
+        st.markdown("</main></div>", unsafe_allow_html=True)
         return
 
     # Initialize session state
@@ -1148,78 +1317,61 @@ def main():
     if "followup_question" not in st.session_state:
         st.session_state.followup_question = ""
 
-    if "show_about" not in st.session_state:
-        st.session_state.show_about = False
-
-    # Header row with controls
-    header_cols = st.columns([5, 1.2, 1])
-    with header_cols[0]:
-        st.markdown('<div class="vonnegut-title">Vonnegut Learning Guide</div>', unsafe_allow_html=True)
-        st.markdown('<div class="vonnegut-subtitle">"Listen: If this isn\'t nice, what is?"</div>', unsafe_allow_html=True)
-
-    with header_cols[1]:
-        if st.button("ℹ️ About", key="about_button"):
-            st.session_state.show_about = True
-
-    with header_cols[2]:
-        if st.button("Clear chats", key="clear_all_conversations"):
-            st.session_state.conversation_history = []
-            st.session_state.learning_history = []
-            st.session_state.selected_passage = None
-            st.session_state.followup_question = ""
-            st.rerun()
+    if "enable_avatar" not in st.session_state:
+        st.session_state.enable_avatar = True
 
     st.markdown(
         """
-        <div class="warning-strip">
-            Educational simulation - AI trained on public Vonnegut sources.
+        <div class="vlg-alert">
+            <div>
+                <h3>Educational simulation</h3>
+                <p>Ground answers in authentic Vonnegut material you control. Add private excerpts locally and rebuild the corpus index regularly.</p>
+            </div>
         </div>
         """,
         unsafe_allow_html=True
     )
 
-    if st.session_state.show_about:
-        st.markdown(
-            """
-            <div class="about-panel">
-                <h4>About this Learning Guide</h4>
-                <p><strong>Kurt Vonnegut Jr.</strong> (1922-2007) - author of <em>Slaughterhouse-Five</em>, <em>Cat's Cradle</em>, and other humanist classics. WWII veteran, POW survivor, teacher, and wit.</p>
-                <ul>
-                    <li>💬 <strong>Chat Mode:</strong> Classic free-form conversation.</li>
-                    <li>📚 <strong>Learning Guide:</strong> Highlight public-domain texts and get literary feedback.</li>
-                    <li>🎧 <strong>Voice (optional):</strong> ElevenLabs integration for spoken replies.</li>
-                </ul>
-                <p class="quote">"We are what we pretend to be, so we must be careful about what we pretend to be."</p>
-            </div>
-            """,
-            unsafe_allow_html=True
-        )
-        close_cols = st.columns([6, 1])
-        with close_cols[1]:
-            if st.button("Close", key="close_about"):
-                st.session_state.show_about = False
-                st.rerun()
-
     with st.sidebar:
         render_profile_settings(key_prefix="sidebar_profile_")
-        render_vonnegut_avatar(position="inline")
 
     # Tabs for different modes
-    tab1, tab2 = st.tabs(["💬 Chat with Kurt", "📚 Interactive Reading Guide"])
+    tabs_shell = st.container()
+    with tabs_shell:
+        tab1, tab2 = st.tabs(["💬 Chat with Kurt", "📖 Interactive Reading Guide"])
 
     with tab1:
+        st.markdown("<section class='vlg-card'>", unsafe_allow_html=True)
+        st.markdown(
+            "<div class='vlg-section-subtitle'>Classic chat mode with optional audio replies.</div>",
+            unsafe_allow_html=True
+        )
+        if st.button("Clear sessions", key="clear_all_conversations"):
+            st.session_state.conversation_history = []
+            st.session_state.learning_history = []
+            st.session_state.selected_passage = None
+            st.session_state.followup_question = ""
+            st.rerun()
         chat_interface()
+        st.markdown("</section>", unsafe_allow_html=True)
 
     with tab2:
+        st.markdown("<section class='vlg-card'>", unsafe_allow_html=True)
         learning_guide_interface()
+        st.markdown("</section>", unsafe_allow_html=True)
 
-    # Footer
-    st.markdown("---")
-    st.markdown("""
-    <div style="text-align: center; color: #CD853F; font-style: italic;">
-    "So it goes." - Educational AI Simulation - Not the real Kurt Vonnegut - v3.0 Learning Guide
-    </div>
-    """, unsafe_allow_html=True)
+    st.markdown(
+        """
+        <div class="vlg-footer">
+            “So it goes.” — Educational AI simulation · Not the real Kurt Vonnegut
+        </div>
+        """,
+        unsafe_allow_html=True
+    )
+
+    st.markdown("</main>", unsafe_allow_html=True)
+    render_vonnegut_avatar(position="floating")
+    st.markdown("</div>", unsafe_allow_html=True)
 
 if __name__ == "__main__":
     main()

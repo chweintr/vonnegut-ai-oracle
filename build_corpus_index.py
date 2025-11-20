@@ -10,6 +10,9 @@ from pathlib import Path
 from typing import Iterable, List, Sequence
 
 import openai
+from dotenv import load_dotenv
+
+load_dotenv()
 
 # Config defaults
 DEFAULT_MODEL = "text-embedding-3-large"
