@@ -869,7 +869,7 @@ def learning_guide_interface():
 def main():
     # Set page config
     st.set_page_config(
-        page_title="Vonnegut Learning Guide",
+        page_title="Vonnebot: A Kurt Vonnegut Inspired Reading Companion",
         page_icon="📚",
         layout="wide",
         initial_sidebar_state="collapsed"
@@ -1270,9 +1270,9 @@ def main():
         """
         <header class="vlg-header">
             <div class="vlg-header-inner">
-                <h1 class="vlg-title">Vonnebot Reading Companion</h1>
-                <p class="vlg-quote">“Listen. If this is not nice, what is?”</p>
-                <p class="vlg-tagline">Educational simulation. AI trained on public Vonnegut sources.</p>
+                <h1 class="vlg-title">Vonnebot</h1>
+                <p class="vlg-quote">A Kurt Vonnegut Inspired Reading Companion</p>
+                <p class="vlg-tagline">"Listen. If this isn't nice, what is?"</p>
             </div>
         </header>
         """,
@@ -1355,7 +1355,17 @@ def main():
     st.markdown(
         """
         <div class="vlg-footer">
-            “So it goes.” — Educational AI simulation · Not the real Kurt Vonnegut
+            <p style="margin-bottom: 12px;">"So it goes."</p>
+            <details style="max-width: 600px; margin: 0 auto; text-align: left;">
+                <summary style="cursor: pointer; color: var(--vlg-accent);">About Vonnebot</summary>
+                <p style="margin-top: 10px; font-size: 0.85rem; line-height: 1.5;">
+                    Vonnebot is an AI tool trained on Kurt Vonnegut's writings to offer readers additional context and insights.
+                    It's a way to engage with his work interactively—not a literal channeling of Vonnegut himself.
+                    Born in 1922, he had his own views on technology; while we think he might have found this intriguing,
+                    we acknowledge this is just an approximation. Our aim is to bring his literature to life for
+                    contemporary readers in a dynamic way. This project is not affiliated with or endorsed by the Vonnegut estate.
+                </p>
+            </details>
         </div>
         """,
         unsafe_allow_html=True
