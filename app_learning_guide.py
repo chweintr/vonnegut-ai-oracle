@@ -45,34 +45,74 @@ READING_EXPERIENCE_OPTIONS = [
     "Dedicated scholar",
 ]
 
-# Simli Configuration
+# LiveKit Configuration
+LIVEKIT_URL = os.getenv("LIVEKIT_URL")
+LIVEKIT_API_KEY = os.getenv("LIVEKIT_API_KEY")
+LIVEKIT_API_SECRET = os.getenv("LIVEKIT_API_SECRET")
+
+# Simli Configuration (still needed for agent backend)
 SIMLI_API_KEY = os.getenv("SIMLI_API_KEY")
 SIMLI_FACE_ID = os.getenv("SIMLI_FACE_ID")
 SIMLI_AGENT_ID = os.getenv("SIMLI_AGENT_ID")
 
+
+def generate_livekit_token(room_name: str = "vonnebot-room", participant_name: str = None) -> str:
+    """Generate a LiveKit access token for the frontend."""
+    try:
+        from livekit import api
+    except ImportError:
+        return None
+
+    if not LIVEKIT_API_KEY or not LIVEKIT_API_SECRET:
+        return None
+
+    if not participant_name:
+        participant_name = f"user-{int(time.time())}"
+
+    token = api.AccessToken(LIVEKIT_API_KEY, LIVEKIT_API_SECRET)
+    token.with_identity(participant_name)
+    token.with_name(participant_name)
+    token.with_grants(api.VideoGrants(
+        room_join=True,
+        room=room_name,
+        can_publish=True,
+        can_subscribe=True,
+    ))
+    token.with_ttl(3600)
+
+    return token.to_jwt()
+
+
 def render_simli_avatar():
-    """Render Simli avatar inside the Streamlit layout."""
-    if not SIMLI_AGENT_ID:
-        st.warning("Simli Agent ID missing in environment variables.")
+    """Render Simli avatar via LiveKit connection."""
+    # Check if LiveKit is configured
+    if not LIVEKIT_URL or not LIVEKIT_API_KEY:
+        st.warning("LiveKit not configured. Add LIVEKIT_URL, LIVEKIT_API_KEY, and LIVEKIT_API_SECRET.")
         return
 
-    # Simli Embed Code
-    # Pattern: https://app.simli.com/avatars/[AGENT_ID]
-    embed_url = f"https://app.simli.com/avatars/{SIMLI_AGENT_ID}"
+    # Generate token for this session
+    room_name = "vonnebot-room"
+    token = generate_livekit_token(room_name)
 
-    simli_html = f"""
-    <div style="width: 100%; height: 520px; border-radius: 8px; overflow: hidden; background-color: #000;">
+    if not token:
+        st.warning("Could not generate LiveKit token.")
+        return
+
+    # LiveKit Meet embed with token
+    # Using LiveKit's pre-built component
+    livekit_html = f"""
+    <div id="vonnebot-avatar" style="width: 100%; height: 520px; border-radius: 8px; overflow: hidden; background-color: #000;">
         <iframe
-            src="{embed_url}"
+            src="https://meet.livekit.io/custom?liveKitUrl={LIVEKIT_URL}&token={token}"
             width="100%"
             height="100%"
             frameborder="0"
-            allow="microphone; camera"
+            allow="microphone; camera; autoplay"
             style="border: none;"
         ></iframe>
     </div>
     """
-    components.html(simli_html, height=520, scrolling=False)
+    components.html(livekit_html, height=520, scrolling=False)
 
 
 LEARNING_FOCUS_OPTIONS = [
