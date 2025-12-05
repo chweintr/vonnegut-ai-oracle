@@ -52,23 +52,22 @@ SIMLI_AGENT_ID = os.getenv("SIMLI_AGENT_ID")
 
 def render_simli_avatar():
     """Render Simli avatar inside the Streamlit layout."""
-    if not SIMLI_API_KEY or not SIMLI_FACE_ID:
-        st.warning("Simli API Key or Face ID missing in environment variables.")
+    if not SIMLI_AGENT_ID:
+        st.warning("Simli Agent ID missing in environment variables.")
         return
 
     # Simli Embed Code
-    # Constructing the embed URL using the provided IDs
-    # Pattern: https://app.simli.com/embed/[AGENT_ID]?faceId=[FACE_ID]
-    embed_url = f"https://app.simli.com/embed/{SIMLI_AGENT_ID}?faceId={SIMLI_FACE_ID}"
-    
+    # Pattern: https://app.simli.com/avatars/[AGENT_ID]
+    embed_url = f"https://app.simli.com/avatars/{SIMLI_AGENT_ID}"
+
     simli_html = f"""
     <div style="width: 100%; height: 520px; border-radius: 8px; overflow: hidden; background-color: #000;">
-        <iframe 
-            src="{embed_url}" 
-            width="100%" 
-            height="100%" 
-            frameborder="0" 
-            allow="microphone"
+        <iframe
+            src="{embed_url}"
+            width="100%"
+            height="100%"
+            frameborder="0"
+            allow="microphone; camera"
             style="border: none;"
         ></iframe>
     </div>
