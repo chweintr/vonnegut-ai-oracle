@@ -56,19 +56,21 @@ def render_simli_avatar():
         st.warning("Simli API Key or Face ID missing in environment variables.")
         return
 
-    # Placeholder for Simli Embed - Replace with actual embed code when available
-    # User Note: Face ID = Visuals, Agent ID = Brains/Voice
-    agent_info = f"Agent ID: {SIMLI_AGENT_ID}" if SIMLI_AGENT_ID else "Agent ID: Not configured"
+    # Simli Embed Code
+    # Constructing the embed URL using the provided IDs
+    # Pattern: https://app.simli.com/embed/[AGENT_ID]?faceId=[FACE_ID]
+    embed_url = f"https://app.simli.com/embed/{SIMLI_AGENT_ID}?faceId={SIMLI_FACE_ID}"
     
     simli_html = f"""
-    <div style="width: 100%; height: 520px; background-color: #000; display: flex; flex-direction: column; justify-content: center; align-items: center; color: white; border: 1px solid #333; border-radius: 8px;">
-        <p style="font-size: 18px; font-weight: bold;">Simli Avatar Active</p>
-        <p style="color: #888; margin-top: 10px;">Face ID: {SIMLI_FACE_ID}</p>
-        <p style="color: #888;">{agent_info}</p>
-        <!-- 
-        Actual Simli Embed Code would go here.
-        It likely needs both faceId and agentId/characterId.
-        -->
+    <div style="width: 100%; height: 520px; border-radius: 8px; overflow: hidden; background-color: #000;">
+        <iframe 
+            src="{embed_url}" 
+            width="100%" 
+            height="100%" 
+            frameborder="0" 
+            allow="microphone"
+            style="border: none;"
+        ></iframe>
     </div>
     """
     components.html(simli_html, height=520, scrolling=False)

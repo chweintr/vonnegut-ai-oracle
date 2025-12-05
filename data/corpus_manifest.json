@@ -1,0 +1,33 @@
+{
+  "model": "text-embedding-3-large",
+  "chunk_size_words": 280,
+  "chunk_overlap_words": 60,
+  "total_chunks": 295,
+  "sources": [
+    "data/raw/interview_sources_summary.txt",
+    "data/raw/periodical_sources_found.txt",
+    "data/raw/pg_2br02b.txt",
+    "data/raw/pg_big_trip_up_yonder.txt",
+    "data/raw/vonnegut_agnes_scott_1999_commencement.txt",
+    "data/raw/vonnegut_biographical_profile.txt",
+    "data/raw/vonnegut_chronicles_excerpts.txt",
+    "data/raw/vonnegut_daily_life_habits.txt",
+    "data/raw/vonnegut_documented_quotes.txt",
+    "data/raw/vonnegut_hobart_1974_commencement.txt",
+    "data/raw/vonnegut_syracuse_1994_excerpt.txt",
+    "data/raw/vonnegut_teaching_persona.txt",
+    "data/raw/youtube_sources_list.txt",
+    "data/vonnegut_corpus/educational_fair_use/interviews/brancaccio_2005_interview.txt",
+    "data/vonnegut_corpus/educational_fair_use/interviews/playboy_1973_interview.txt",
+    "data/vonnegut_corpus/educational_fair_use/interviews/progressive_interview.txt",
+    "data/vonnegut_corpus/educational_fair_use/speeches/agnes_scott_1999_commencement.txt",
+    "data/vonnegut_corpus/educational_fair_use/speeches/bennington_1970_commencement.txt",
+    "data/vonnegut_corpus/educational_fair_use/speeches/hws_1974_commencement.txt",
+    "data/vonnegut_corpus/educational_fair_use/speeches/shape_of_stories_lecture.txt",
+    "data/vonnegut_corpus/educational_fair_use/speeches/syracuse_1994_commencement.txt",
+    "data/vonnegut_corpus/public_domain/2BR02B.txt",
+    "data/vonnegut_corpus/public_domain/HarrisonBergeron.txt",
+    "data/vonnegut_corpus/public_domain/TheBigTripUpYonder.txt",
+    "data/vonnegut_corpus/public_domain/UnreadyToWear.txt"
+  ]
+}
