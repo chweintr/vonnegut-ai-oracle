@@ -1,0 +1,9 @@
+# Requirements for the Vonnebot LiveKit Agent backend
+# This runs as a separate service from the Streamlit frontend
+
+openai>=1.0.0
+python-dotenv>=1.0.0
+numpy>=1.26.0
+livekit-agents[openai]>=0.8.0
+livekit-plugins-simli>=0.2.0
+livekit>=0.13.0

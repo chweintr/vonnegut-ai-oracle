@@ -4,6 +4,4 @@ python-dotenv>=1.0.0
 requests>=2.31.0
 streamlit-mic-recorder>=0.0.6
 numpy>=1.26.0
-livekit-agents[openai]>=0.8.0
-livekit-plugins-simli>=0.2.0
-livekit>=0.13.0
+livekit-api>=0.6.0

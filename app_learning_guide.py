@@ -59,9 +59,8 @@ SIMLI_AGENT_ID = os.getenv("SIMLI_AGENT_ID")
 def generate_livekit_token(room_name: str = "vonnebot-room", participant_name: str = None) -> str:
     """Generate a LiveKit access token for the frontend."""
     try:
-        from livekit import api
+        from livekit.api import AccessToken, VideoGrants
     except ImportError:
-        st.warning("LiveKit SDK not available")
         return None
 
     if not LIVEKIT_API_KEY or not LIVEKIT_API_SECRET:
@@ -71,10 +70,10 @@ def generate_livekit_token(room_name: str = "vonnebot-room", participant_name: s
         participant_name = f"user-{int(time.time())}"
 
     try:
-        token = api.AccessToken(LIVEKIT_API_KEY, LIVEKIT_API_SECRET)
+        token = AccessToken(LIVEKIT_API_KEY, LIVEKIT_API_SECRET)
         token.with_identity(participant_name)
         token.with_name(participant_name)
-        token.with_grants(api.VideoGrants(
+        token.with_grants(VideoGrants(
             room_join=True,
             room=room_name,
             can_publish=True,
@@ -83,7 +82,6 @@ def generate_livekit_token(room_name: str = "vonnebot-room", participant_name: s
         token.with_ttl(3600)
         return token.to_jwt()
     except Exception as e:
-        st.warning(f"Token generation failed: {e}")
         return None
 
 
