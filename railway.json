@@ -5,6 +5,6 @@
     ]
   },
   "deploy": {
-    "startCommand": "streamlit run app_learning_guide.py --server.port $PORT --server.address 0.0.0.0"
+    "startCommand": "streamlit run vonnebot_clean.py --server.port $PORT --server.address 0.0.0.0"
   }
 }
