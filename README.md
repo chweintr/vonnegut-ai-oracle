@@ -1,69 +1,85 @@
-# Kurt Vonnegut AI Oracle
+# Vonnebot
 
-A sophisticated AI chatbot that embodies the voice, personality, and philosophy of Kurt Vonnegut Jr. (1922-2007), complete with voice synthesis using ElevenLabs.
+**A Kurt Vonnegut Inspired Reading Companion**
 
-## Features
+Vonnebot is an AI reading companion that helps you engage with Kurt Vonnegut's work. It sees what you're reading and responds with Vonnegut's voice, wit, and Socratic teaching style.
 
-- **Authentic Vonnegut Personality**: Based on extensive biographical research, documented quotes, and speech patterns
-- **Voice Synthesis**: ElevenLabs integration for authentic Vonnegut voice
-- **4 Conversation Modes**: 
-  - Philosophical Discussion
-  - Writing Advice  
-  - War & Life Experiences
-  - Social Commentary
-- **Vintage Aesthetic**: Brown/orange color scheme with Courier New typography
-- **Password Protection**: Access code "tralfamadore"
+## What It Does
 
-## Setup Instructions
+- **Reading Pane** (left): Load Vonnegut texts or upload your own. The bot automatically sees what you're reading.
+- **Chat** (right): Discuss passages, themes, characters—anything. Like having Vonnegut as your reading buddy.
+- **Voice Avatar** (coming soon): Talk with "Kurt" through a Simli-powered avatar.
 
-1. **Install Dependencies**:
-   ```bash
-   pip install -r requirements.txt
-   ```
+## Philosophy
 
-2. **Configure API Keys**:
-   - Copy `.env.template` to `.env`
-   - Add your OpenAI API key
-   - Add your ElevenLabs API key and voice ID
+Vonnebot doesn't just give answers. It asks questions back:
 
-3. **Run the Application**:
-   ```bash
-   streamlit run vonnegut_ai_app.py
-   ```
+> "I'll tell you what I think in a moment, but first—what jumped out at you when you read that?"
 
-4. **Access the App**:
-   - Open your browser to the provided URL
-   - Enter passcode: `tralfamadore`
-   - Start conversing with Kurt Vonnegut!
+This Socratic approach encourages you to develop your own interpretations rather than passively receive analysis. Vonnegut was a teacher at the Iowa Writers' Workshop—he believed learning comes from doing, not just receiving.
 
-## API Keys Required
+## Quick Start
 
-- **OpenAI API Key**: For GPT-4 conversations
-- **ElevenLabs API Key**: For voice synthesis (optional but recommended)
-- **ElevenLabs Voice ID**: Your custom Vonnegut voice
+### Run Locally
 
-## Authentic Vonnegut Elements
+```bash
+# Install dependencies
+pip install -r requirements.txt
 
-The AI incorporates:
-- Signature phrases: "Listen:", "So it goes", "I tell you..."
-- Biographical accuracy from extensive research
-- Anti-AI-tic prompting (no "Ah," "Well," etc.)
-- Midwestern conversational style
-- Humanist philosophy and anti-war sentiment
-- Self-deprecating humor and folksy wisdom
+# Set up environment variables (copy from template)
+cp .env.template .env
+# Edit .env with your API keys
 
-## Usage Tips
+# Run the app
+streamlit run vonnebot_clean.py
+```
 
-- Try asking about life, death, war, writing, or social issues
-- Switch conversation modes in the sidebar for different perspectives
-- Enable voice synthesis for the full Vonnegut experience
-- Clear conversation history to start fresh topics
+### Environment Variables
 
-## Technical Notes
+```
+OPENAI_API_KEY=your_openai_key
+ELEVENLABS_API_KEY=your_elevenlabs_key (optional)
+ELEVENLABS_VOICE_ID=your_voice_id (optional)
+LIVEKIT_URL=your_livekit_url (for voice avatar)
+LIVEKIT_API_KEY=your_livekit_key (for voice avatar)
+LIVEKIT_API_SECRET=your_livekit_secret (for voice avatar)
+SIMLI_API_KEY=your_simli_key (for voice avatar)
+SIMLI_FACE_ID=your_simli_face_id (for voice avatar)
+```
 
-- Built with Streamlit for the web interface
-- Uses GPT-4 with comprehensive personality prompting
-- ElevenLabs API for high-quality voice synthesis
-- Responsive design with custom CSS styling
+## Architecture
 
-*"If this isn't nice, what is?"* - Kurt Vonnegut
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                        VONNEBOT                                  │
+├────────────────────────────────┬────────────────────────────────┤
+│                                │     ┌──────────────┐           │
+│     📖 READING PANE            │     │   🎭 Avatar  │           │
+│                                │     │   (Simli)    │           │
+│     - Library texts            │     └──────────────┘           │
+│     - Upload your own          │                                │
+│     - Auto-context to bot      │     💬 CHAT                    │
+│                                │     - Scrollable thread        │
+│                                │     - Socratic engagement      │
+│                                │     - Vonnegut's voice         │
+└────────────────────────────────┴────────────────────────────────┘
+```
+
+## Key Files
+
+| File | Purpose |
+|------|---------|
+| `vonnebot_clean.py` | Main app (clean, minimal) |
+| `prompts_base_prompt.txt` | Vonnegut persona + Socratic style |
+| `vonnebot_agent.py` | LiveKit agent for voice avatar |
+| `data/` | Corpus, excerpts, public domain texts |
+
+## Disclaimer
+
+Vonnebot is an AI tool trained on Kurt Vonnegut's writings to offer readers additional context and insights. It's a way to engage with his work interactively—not a literal channeling of Vonnegut himself. Born in 1922, he had his own views on technology; while we think he might have found this intriguing, we acknowledge this is just an approximation.
+
+**This project is not affiliated with or endorsed by the Vonnegut estate.**
+
+---
+
+*"Listen. If this isn't nice, what is?"*
