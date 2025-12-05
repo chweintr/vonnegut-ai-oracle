@@ -61,6 +61,7 @@ def generate_livekit_token(room_name: str = "vonnebot-room", participant_name: s
     try:
         from livekit import api
     except ImportError:
+        st.warning("LiveKit SDK not available")
         return None
 
     if not LIVEKIT_API_KEY or not LIVEKIT_API_SECRET:
@@ -69,25 +70,37 @@ def generate_livekit_token(room_name: str = "vonnebot-room", participant_name: s
     if not participant_name:
         participant_name = f"user-{int(time.time())}"
 
-    token = api.AccessToken(LIVEKIT_API_KEY, LIVEKIT_API_SECRET)
-    token.with_identity(participant_name)
-    token.with_name(participant_name)
-    token.with_grants(api.VideoGrants(
-        room_join=True,
-        room=room_name,
-        can_publish=True,
-        can_subscribe=True,
-    ))
-    token.with_ttl(3600)
-
-    return token.to_jwt()
+    try:
+        token = api.AccessToken(LIVEKIT_API_KEY, LIVEKIT_API_SECRET)
+        token.with_identity(participant_name)
+        token.with_name(participant_name)
+        token.with_grants(api.VideoGrants(
+            room_join=True,
+            room=room_name,
+            can_publish=True,
+            can_subscribe=True,
+        ))
+        token.with_ttl(3600)
+        return token.to_jwt()
+    except Exception as e:
+        st.warning(f"Token generation failed: {e}")
+        return None
 
 
 def render_simli_avatar():
-    """Render Simli avatar via LiveKit connection."""
+    """Render Simli avatar via LiveKit connection, with fallback to placeholder."""
     # Check if LiveKit is configured
-    if not LIVEKIT_URL or not LIVEKIT_API_KEY:
-        st.warning("LiveKit not configured. Add LIVEKIT_URL, LIVEKIT_API_KEY, and LIVEKIT_API_SECRET.")
+    if not LIVEKIT_URL or not LIVEKIT_API_KEY or not LIVEKIT_API_SECRET:
+        # Fallback: show placeholder with message
+        st.markdown(
+            """
+            <div style="width: 100%; height: 520px; background-color: #111; display: flex; flex-direction: column; justify-content: center; align-items: center; border: 1px solid #333; border-radius: 8px;">
+                <p style="color: #888; font-size: 16px;">Voice avatar not configured</p>
+                <p style="color: #666; font-size: 12px;">Use text mode below to chat with Vonnebot</p>
+            </div>
+            """,
+            unsafe_allow_html=True
+        )
         return
 
     # Generate token for this session
@@ -95,11 +108,18 @@ def render_simli_avatar():
     token = generate_livekit_token(room_name)
 
     if not token:
-        st.warning("Could not generate LiveKit token.")
+        st.markdown(
+            """
+            <div style="width: 100%; height: 520px; background-color: #111; display: flex; flex-direction: column; justify-content: center; align-items: center; border: 1px solid #333; border-radius: 8px;">
+                <p style="color: #f5a623; font-size: 16px;">Could not connect to voice service</p>
+                <p style="color: #666; font-size: 12px;">Use text mode below to chat with Vonnebot</p>
+            </div>
+            """,
+            unsafe_allow_html=True
+        )
         return
 
     # LiveKit Meet embed with token
-    # Using LiveKit's pre-built component
     livekit_html = f"""
     <div id="vonnebot-avatar" style="width: 100%; height: 520px; border-radius: 8px; overflow: hidden; background-color: #000;">
         <iframe
