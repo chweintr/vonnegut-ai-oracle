@@ -20,6 +20,9 @@ app = Flask(__name__, static_folder='static', template_folder='templates')
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 openai_client = openai.OpenAI(api_key=OPENAI_API_KEY) if OPENAI_API_KEY else None
 
+# Simli configuration
+SIMLI_AGENT_ID = os.getenv("SIMLI_AGENT_ID")
+
 # Load Vonnegut system prompt
 PROMPT_PATH = Path("prompts_base_prompt.txt")
 SYSTEM_PROMPT = PROMPT_PATH.read_text(encoding="utf-8") if PROMPT_PATH.exists() else "You are Kurt Vonnegut."
@@ -48,7 +51,11 @@ if TEXTS_DIR.exists():
 @app.route('/')
 def index():
     """Serve the main page."""
-    return render_template('index.html', texts=list(AVAILABLE_TEXTS.keys()))
+    return render_template(
+        'index.html',
+        texts=list(AVAILABLE_TEXTS.keys()),
+        simli_agent_id=SIMLI_AGENT_ID
+    )
 
 
 @app.route('/static/<path:filename>')
