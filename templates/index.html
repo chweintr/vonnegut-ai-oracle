@@ -4,8 +4,8 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Vonnebot</title>
-  <!-- LiveKit Client SDK -->
-  <script src="https://cdn.jsdelivr.net/npm/livekit-client/dist/livekit-client.umd.js"></script>
+  <!-- Simli Widget SDK -->
+  <script src="https://app.simli.com/simli-widget/index.js" defer></script>
   <style>
     @import url('https://fonts.googleapis.com/css2?family=Special+Elite&family=Libre+Baskerville:ital,wght@0,400;0,700;1,400&family=Caveat:wght@400;700&display=swap');
 
@@ -630,28 +630,15 @@
             muted
             playsinline
           ></video>
-          <!-- LiveKit video (shown during voice mode) -->
-          <video
-            id="livekitVideo"
-            autoplay
-            playsinline
-            style="display: none;"
-          ></video>
-          <!-- LiveKit audio -->
-          <audio id="livekitAudio" autoplay style="display: none;"></audio>
+          <!-- Simli widget mount point (shown during voice mode) -->
+          <div id="simliMount" style="display: none; width: 100%; height: 100%;"></div>
         </div>
 
         <span class="avatar-label" id="avatarLabel">Kurt is listening...</span>
 
-        {% if livekit_url %}
         <button class="voice-toggle" id="voiceToggle">
           <span>&#9834;</span> Talk to Kurt
         </button>
-        {% else %}
-        <button class="voice-toggle" id="voiceToggle" disabled style="opacity: 0.5;">
-          <span>&#9834;</span> Voice mode (coming soon)
-        </button>
-        {% endif %}
       </div>
 
       <div class="chat-area">
@@ -694,15 +681,14 @@
     const voiceToggle = document.getElementById('voiceToggle');
     const avatarLabel = document.getElementById('avatarLabel');
     const idleVideo = document.getElementById('idleVideo');
-    const livekitVideo = document.getElementById('livekitVideo');
-    const livekitAudio = document.getElementById('livekitAudio');
+    const simliMount = document.getElementById('simliMount');
 
     // ========== STATE ==========
     let chatHistory = [];
     let currentPassageIndex = 0;
     let currentParagraphs = [];
     let voiceModeActive = false;
-    let livekitRoom = null;
+    let simliWidget = null;
 
     // ========== HELPERS ==========
 
@@ -878,68 +864,53 @@
 
     voiceToggle.addEventListener('click', async () => {
       if (voiceModeActive) {
-        // Disconnect from LiveKit
-        if (livekitRoom) {
-          livekitRoom.disconnect();
-          livekitRoom = null;
+        // End voice mode - remove Simli widget
+        if (simliWidget) {
+          simliMount.removeChild(simliWidget);
+          simliWidget = null;
         }
         voiceModeActive = false;
         voiceToggle.classList.remove('active');
-        livekitVideo.style.display = 'none';
+        simliMount.style.display = 'none';
         idleVideo.style.display = 'block';
         avatarLabel.textContent = 'Kurt is listening...';
         voiceToggle.innerHTML = '<span>&#9834;</span> Talk to Kurt';
         return;
       }
 
-      // Start voice mode - connect to LiveKit
+      // Start voice mode - create Simli widget
       avatarLabel.textContent = 'Connecting...';
       voiceToggle.disabled = true;
 
       try {
         // Get token from backend
-        const tokenRes = await fetch('/api/livekit-token', { method: 'POST' });
+        const tokenRes = await fetch('/api/simli-token', { method: 'POST' });
         const tokenData = await tokenRes.json();
 
         if (tokenData.error) {
           throw new Error(tokenData.error);
         }
 
-        // Connect to LiveKit room
-        livekitRoom = new LivekitClient.Room();
+        // Create Simli widget
+        simliWidget = document.createElement('simli-widget');
+        simliWidget.setAttribute('token', tokenData.token);
+        simliWidget.setAttribute('agent-id', tokenData.agentId);
+        simliWidget.setAttribute('face-id', tokenData.faceId);
+        simliWidget.style.width = '100%';
+        simliWidget.style.height = '100%';
 
-        // Handle remote tracks (video/audio from agent)
-        livekitRoom.on(LivekitClient.RoomEvent.TrackSubscribed, (track, publication, participant) => {
-          console.log('Track subscribed:', track.kind);
-          if (track.kind === 'video') {
-            track.attach(livekitVideo);
-            idleVideo.style.display = 'none';
-            livekitVideo.style.display = 'block';
-          } else if (track.kind === 'audio') {
-            track.attach(livekitAudio);
+        // Hide idle video, show Simli mount
+        idleVideo.style.display = 'none';
+        simliMount.style.display = 'block';
+        simliMount.appendChild(simliWidget);
+
+        // Try to auto-start after a short delay
+        setTimeout(() => {
+          const startBtn = simliWidget.querySelector('button');
+          if (startBtn) {
+            startBtn.click();
           }
-        });
-
-        livekitRoom.on(LivekitClient.RoomEvent.TrackUnsubscribed, (track) => {
-          track.detach();
-        });
-
-        livekitRoom.on(LivekitClient.RoomEvent.Disconnected, () => {
-          console.log('Disconnected from room');
-          voiceModeActive = false;
-          voiceToggle.classList.remove('active');
-          livekitVideo.style.display = 'none';
-          idleVideo.style.display = 'block';
-          avatarLabel.textContent = 'Kurt is listening...';
-          voiceToggle.innerHTML = '<span>&#9834;</span> Talk to Kurt';
-        });
-
-        // Connect
-        await livekitRoom.connect(tokenData.url, tokenData.token);
-        console.log('Connected to room:', tokenData.room);
-
-        // Enable microphone
-        await livekitRoom.localParticipant.setMicrophoneEnabled(true);
+        }, 500);
 
         voiceModeActive = true;
         voiceToggle.classList.add('active');

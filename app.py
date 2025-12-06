@@ -6,12 +6,18 @@ Flask backend with beautiful typewriter-style frontend
 
 from flask import Flask, render_template, request, jsonify, send_from_directory
 import openai
+import requests
 import os
 import time
 import uuid
 from pathlib import Path
 from dotenv import load_dotenv
-from livekit import api
+
+# LiveKit import - optional, only needed if using LiveKit
+try:
+    from livekit import api as livekit_api
+except ImportError:
+    livekit_api = None
 
 load_dotenv()
 
@@ -24,7 +30,9 @@ OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 openai_client = openai.OpenAI(api_key=OPENAI_API_KEY) if OPENAI_API_KEY else None
 
 # Simli configuration
+SIMLI_API_KEY = os.getenv("SIMLI_API_KEY")
 SIMLI_AGENT_ID = os.getenv("SIMLI_AGENT_ID")
+SIMLI_FACE_ID = os.getenv("SIMLI_FACE_ID")
 
 # LiveKit configuration
 LIVEKIT_URL = os.getenv("LIVEKIT_URL")
@@ -101,10 +109,32 @@ def get_text(text_name):
     })
 
 
+@app.route('/api/simli-token', methods=['POST'])
+def get_simli_token():
+    """Generate a Simli session token."""
+    if not SIMLI_API_KEY:
+        return jsonify({"error": "Simli API key not configured"}), 500
+
+    try:
+        response = requests.post(
+            "https://api.simli.ai/getToken",
+            json={"apiKey": SIMLI_API_KEY}
+        )
+        response.raise_for_status()
+        data = response.json()
+        return jsonify({
+            "token": data.get("token"),
+            "agentId": SIMLI_AGENT_ID,
+            "faceId": SIMLI_FACE_ID
+        })
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
 @app.route('/api/livekit-token', methods=['POST'])
 def get_livekit_token():
     """Generate a LiveKit token for the user to join a room."""
-    if not LIVEKIT_API_KEY or not LIVEKIT_API_SECRET:
+    if not livekit_api or not LIVEKIT_API_KEY or not LIVEKIT_API_SECRET:
         return jsonify({"error": "LiveKit not configured"}), 500
 
     # Create a unique room name and user identity
@@ -112,10 +142,10 @@ def get_livekit_token():
     user_identity = f"user-{uuid.uuid4().hex[:8]}"
 
     # Create access token
-    token = api.AccessToken(LIVEKIT_API_KEY, LIVEKIT_API_SECRET)
+    token = livekit_api.AccessToken(LIVEKIT_API_KEY, LIVEKIT_API_SECRET)
     token.with_identity(user_identity)
     token.with_name("Reader")
-    token.with_grants(api.VideoGrants(
+    token.with_grants(livekit_api.VideoGrants(
         room_join=True,
         room=room_name,
     ))
