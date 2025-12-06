@@ -1,0 +1,52 @@
+{
+  "doodles": [
+    {
+      "id": "bird",
+      "image": "bird.svg",
+      "alt": "A bird on a wire",
+      "caption": "Poo-tee-weet?",
+      "triggers": ["bird", "favorite animal", "animals", "what animal", "fly", "flying"],
+      "random_chance": 0.15
+    },
+    {
+      "id": "gravestone",
+      "image": "gravestone.svg",
+      "alt": "A gravestone reading 'Everything was beautiful and nothing hurt'",
+      "caption": null,
+      "triggers": ["death", "dying", "died", "dead", "mortality", "grave", "funeral", "so it goes"],
+      "random_chance": 0.1
+    },
+    {
+      "id": "asterisk-person",
+      "image": "asterisk-person.svg",
+      "alt": "An asterisk figure with legs",
+      "caption": "Here I am.",
+      "triggers": ["who are you", "what are you", "what do you look like", "yourself", "self portrait", "draw yourself"],
+      "random_chance": 0.2
+    },
+    {
+      "id": "so-it-goes",
+      "image": "so-it-goes.svg",
+      "alt": "Handwritten 'So it goes'",
+      "caption": null,
+      "triggers": ["so it goes", "acceptance", "resignation", "fatalism", "tralfamadore"],
+      "random_chance": 0.1
+    },
+    {
+      "id": "self-portrait",
+      "image": "self-portrait.svg",
+      "alt": "A simple sketch of Vonnegut with curly hair, mustache, and cigarette",
+      "caption": "That's me. More or less.",
+      "triggers": ["vonnegut", "look like", "appearance", "face", "portrait", "picture of you"],
+      "random_chance": 0.15
+    },
+    {
+      "id": "hello",
+      "image": "hello.svg",
+      "alt": "A waving hand",
+      "caption": "Hello there.",
+      "triggers": ["hello", "hi", "hey", "greetings", "good morning", "good evening"],
+      "random_chance": 0.2
+    }
+  ]
+}

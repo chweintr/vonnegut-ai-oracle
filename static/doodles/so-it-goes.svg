@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 140 60" width="140" height="60">
+  <!-- Handwritten "So it goes" -->
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Caveat:wght@400&display=swap');
+    .handwritten {
+      font-family: 'Caveat', cursive, sans-serif;
+      font-size: 28px;
+      fill: #2a2520;
+    }
+    .line { stroke: #2a2520; stroke-width: 1; fill: none; }
+  </style>
+  <text x="70" y="38" class="handwritten" text-anchor="middle">So it goes.</text>
+  <!-- Small underline flourish -->
+  <path class="line" d="M 35 48 Q 70 52 105 48"/>
+</svg>

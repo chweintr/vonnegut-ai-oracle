@@ -10,6 +10,8 @@ import requests
 import os
 import time
 import uuid
+import json
+import random
 from pathlib import Path
 from dotenv import load_dotenv
 
@@ -59,6 +61,40 @@ if TEXTS_DIR.exists():
         }
         display_name = years.get(txt_file.stem, name)
         AVAILABLE_TEXTS[display_name] = txt_file
+
+# Load doodle manifest
+DOODLES_MANIFEST_PATH = Path("static/doodles/manifest.json")
+DOODLES = []
+if DOODLES_MANIFEST_PATH.exists():
+    try:
+        DOODLES = json.loads(DOODLES_MANIFEST_PATH.read_text(encoding="utf-8")).get("doodles", [])
+    except Exception:
+        pass
+
+
+def check_for_doodle(message: str) -> dict | None:
+    """
+    Check if the user's message should trigger a doodle response.
+    Returns doodle info dict or None.
+    """
+    message_lower = message.lower()
+
+    for doodle in DOODLES:
+        triggers = doodle.get("triggers", [])
+        random_chance = doodle.get("random_chance", 0.1)
+
+        # Check if any trigger words are in the message
+        for trigger in triggers:
+            if trigger.lower() in message_lower:
+                # Roll for random chance (so not every trigger returns a doodle)
+                if random.random() < random_chance:
+                    return {
+                        "image": doodle["image"],
+                        "alt": doodle.get("alt", ""),
+                        "caption": doodle.get("caption")
+                    }
+
+    return None
 
 
 # -----------------------------------------------------------------------------
@@ -168,6 +204,11 @@ def chat():
 
     if not user_message:
         return jsonify({"error": "No message provided"}), 400
+
+    # Check if this should trigger a doodle response
+    doodle = check_for_doodle(user_message)
+    if doodle:
+        return jsonify({"doodle": doodle})
 
     if not openai_client:
         return jsonify({

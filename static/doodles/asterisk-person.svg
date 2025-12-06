@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 120" width="100" height="120">
+  <!-- Vonnegut's asterisk/asshole self-portrait -->
+  <style>
+    .line { stroke: #2a2520; stroke-width: 1.5; fill: none; stroke-linecap: round; }
+  </style>
+  <!-- Asterisk body (the famous "asshole" drawing) -->
+  <circle cx="50" cy="50" r="15" class="line"/>
+  <!-- Asterisk lines radiating out -->
+  <line x1="50" y1="35" x2="50" y2="20" class="line"/>
+  <line x1="50" y1="65" x2="50" y2="80" class="line"/>
+  <line x1="35" y1="50" x2="20" y2="50" class="line"/>
+  <line x1="65" y1="50" x2="80" y2="50" class="line"/>
+  <line x1="39" y1="39" x2="28" y2="28" class="line"/>
+  <line x1="61" y1="61" x2="72" y2="72" class="line"/>
+  <line x1="39" y1="61" x2="28" y2="72" class="line"/>
+  <line x1="61" y1="39" x2="72" y2="28" class="line"/>
+  <!-- Legs -->
+  <line x1="42" y1="80" x2="35" y2="110" class="line"/>
+  <line x1="58" y1="80" x2="65" y2="110" class="line"/>
+  <!-- Feet -->
+  <path class="line" d="M 30 110 L 40 110"/>
+  <path class="line" d="M 60 110 L 70 110"/>
+</svg>

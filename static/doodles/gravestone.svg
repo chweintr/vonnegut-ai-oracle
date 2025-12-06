@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 140" width="120" height="140">
+  <!-- Vonnegut's famous gravestone doodle -->
+  <style>
+    .line { stroke: #2a2520; stroke-width: 1.5; fill: none; stroke-linecap: round; }
+    .text { font-family: 'Caveat', cursive, sans-serif; font-size: 8px; fill: #2a2520; }
+  </style>
+  <!-- Ground line -->
+  <path class="line" d="M 10 125 Q 60 120 110 125"/>
+  <!-- Grass tufts -->
+  <path class="line" d="M 20 125 Q 22 118 24 125"/>
+  <path class="line" d="M 35 123 Q 37 116 39 123"/>
+  <path class="line" d="M 80 124 Q 82 117 84 124"/>
+  <path class="line" d="M 95 125 Q 97 119 99 125"/>
+  <!-- Gravestone shape -->
+  <path class="line" d="M 30 125 L 30 45 Q 30 25 60 25 Q 90 25 90 45 L 90 125"/>
+  <!-- Inner border -->
+  <path class="line" d="M 38 118 L 38 52 Q 38 35 60 35 Q 82 35 82 52 L 82 118"/>
+  <!-- Text: EVERYTHING WAS BEAUTIFUL -->
+  <text x="60" y="55" class="text" text-anchor="middle">EVERYTHING</text>
+  <text x="60" y="68" class="text" text-anchor="middle">WAS</text>
+  <text x="60" y="81" class="text" text-anchor="middle">BEAUTIFUL</text>
+  <!-- Decorative line -->
+  <path class="line" d="M 45 90 L 75 90"/>
+  <!-- AND NOTHING HURT -->
+  <text x="60" y="102" class="text" text-anchor="middle">AND NOTHING</text>
+  <text x="60" y="115" class="text" text-anchor="middle">HURT</text>
+</svg>

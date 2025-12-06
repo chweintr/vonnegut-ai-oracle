@@ -418,6 +418,80 @@
       text-align: right;
     }
 
+    /* Animated K.V.*bot signature */
+    .message.bot .signature .bot-suffix {
+      display: inline-block;
+    }
+
+    .message.bot .signature .asterisk {
+      display: inline-block;
+      animation: asterisk-blink 0.8s ease-in-out;
+    }
+
+    .message.bot .signature .bot-letter {
+      display: inline-block;
+      opacity: 0;
+      animation: type-letter 0.1s ease-out forwards;
+    }
+
+    @keyframes asterisk-blink {
+      0%, 40% { opacity: 1; }
+      20% { opacity: 0.3; }
+      60%, 100% { opacity: 1; }
+    }
+
+    @keyframes type-letter {
+      to { opacity: 1; }
+    }
+
+    /* About section */
+    .about-section {
+      margin-top: 1rem;
+      padding-top: 0.5rem;
+      border-top: 1px dashed var(--pencil);
+      font-size: 0.8rem;
+      color: var(--pencil);
+    }
+
+    .about-section summary {
+      cursor: pointer;
+      font-family: 'Special Elite', monospace;
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--pencil);
+    }
+
+    .about-section summary:hover {
+      color: var(--rust);
+    }
+
+    .about-section p {
+      margin-top: 0.75rem;
+      line-height: 1.6;
+      font-size: 0.8rem;
+    }
+
+    /* Doodle message */
+    .message.bot.doodle .doodle-container {
+      text-align: center;
+      padding: 1rem 0;
+    }
+
+    .message.bot.doodle .doodle-container img {
+      max-width: 150px;
+      max-height: 150px;
+      opacity: 0.85;
+    }
+
+    .message.bot.doodle .doodle-caption {
+      font-family: 'Caveat', cursive;
+      font-size: 0.95rem;
+      color: var(--pencil);
+      margin-top: 0.5rem;
+      font-style: italic;
+    }
+
     .message.user {
       align-self: flex-end;
       background: white;
@@ -667,6 +741,17 @@
       </div>
 
       <div class="footer-note">So it goes.</div>
+
+      <details class="about-section">
+        <summary>About Vonnebot</summary>
+        <p>
+          Vonnebot is an AI tool trained on Kurt Vonnegut's writings to offer readers additional context and insights.
+          It's a way to engage with his work interactively—not a literal channeling of Vonnegut himself.
+          Born in 1922, he had his own views on technology; while we think he might have found this intriguing,
+          we acknowledge this is just an approximation. Our aim is to bring his literature to life for
+          contemporary readers in a dynamic way. <strong>This project is not affiliated with or endorsed by the Vonnegut estate.</strong>
+        </p>
+      </details>
     </aside>
   </div>
 
@@ -692,7 +777,7 @@
 
     // ========== HELPERS ==========
 
-    function addMessage(content, type = 'bot') {
+    function addMessage(content, type = 'bot', doodle = null) {
       // Remove welcome message if present
       const welcome = chatMessages.querySelector('.welcome-message');
       if (welcome) welcome.remove();
@@ -704,10 +789,23 @@
         const rotation = (Math.random() - 0.5) * 0.8;
         msg.style.transform = `rotate(${rotation}deg)`;
 
-        msg.innerHTML = `
-          <div class="text">${content}</div>
-          <div class="signature">-- K.V.</div>
-        `;
+        if (doodle) {
+          // Doodle response
+          msg.classList.add('doodle');
+          msg.innerHTML = `
+            <div class="doodle-container">
+              <img src="/static/doodles/${doodle.image}" alt="${doodle.alt || 'doodle'}">
+              ${doodle.caption ? `<div class="doodle-caption">${doodle.caption}</div>` : ''}
+            </div>
+            <div class="signature">— K.V.<span class="bot-suffix"><span class="asterisk">*</span><span class="bot-letter" style="animation-delay: 0.8s">b</span><span class="bot-letter" style="animation-delay: 0.9s">o</span><span class="bot-letter" style="animation-delay: 1.0s">t</span></span></div>
+          `;
+        } else {
+          // Text response with animated signature
+          msg.innerHTML = `
+            <div class="text">${content}</div>
+            <div class="signature">— K.V.<span class="bot-suffix"><span class="asterisk">*</span><span class="bot-letter" style="animation-delay: 0.8s">b</span><span class="bot-letter" style="animation-delay: 0.9s">o</span><span class="bot-letter" style="animation-delay: 1.0s">t</span></span></div>
+          `;
+        }
       } else {
         msg.textContent = content;
       }
@@ -716,7 +814,7 @@
       chatMessages.scrollTop = chatMessages.scrollHeight;
 
       // Update history
-      chatHistory.push({ type, content });
+      chatHistory.push({ type, content, doodle });
     }
 
     function setTyping(visible) {
@@ -835,7 +933,10 @@
         const data = await response.json();
         setTyping(false);
 
-        if (data.response) {
+        if (data.doodle) {
+          // Doodle response
+          addMessage('', 'bot', data.doodle);
+        } else if (data.response) {
           addMessage(data.response, 'bot');
         }
       } catch (err) {

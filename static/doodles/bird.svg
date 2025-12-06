@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="100" height="100">
+  <!-- Simple Vonnegut-style bird on a wire -->
+  <style>
+    .line { stroke: #2a2520; stroke-width: 1.5; fill: none; stroke-linecap: round; }
+    .dot { fill: #2a2520; }
+  </style>
+  <!-- Wire -->
+  <path class="line" d="M 5 70 Q 50 65 95 70"/>
+  <!-- Bird body (simple oval) -->
+  <ellipse cx="50" cy="55" rx="12" ry="8" class="line"/>
+  <!-- Bird head -->
+  <circle cx="62" cy="50" r="6" class="line"/>
+  <!-- Eye -->
+  <circle cx="64" cy="49" r="1.5" class="dot"/>
+  <!-- Beak -->
+  <path class="line" d="M 68 50 L 75 48 L 68 52"/>
+  <!-- Legs -->
+  <path class="line" d="M 45 63 L 45 70"/>
+  <path class="line" d="M 55 63 L 55 70"/>
+  <!-- Feet -->
+  <path class="line" d="M 42 70 L 48 70"/>
+  <path class="line" d="M 52 70 L 58 70"/>
+  <!-- Tail feathers -->
+  <path class="line" d="M 38 55 L 28 50"/>
+  <path class="line" d="M 38 57 L 25 55"/>
+  <path class="line" d="M 38 59 L 28 62"/>
+</svg>
