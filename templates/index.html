@@ -283,10 +283,12 @@
       object-fit: contain;
     }
 
-    .avatar-container iframe {
+    .avatar-container iframe,
+    .avatar-container video {
       width: 100%;
       height: 100%;
       border: none;
+      object-fit: cover;
     }
 
     /* Breathing animation behind avatar - only for SVG */
@@ -616,24 +618,35 @@
     <!-- Companion Pane -->
     <aside class="companion-pane">
       <div class="avatar-area">
-        <div class="avatar-container{% if simli_agent_id %} has-video{% endif %}" id="avatarContainer">
+        <div class="avatar-container has-video" id="avatarContainer">
+          <!-- Idle loop video -->
+          <video
+            id="idleVideo"
+            src="/static/vonnegut_blinking.mp4"
+            autoplay
+            loop
+            muted
+            playsinline
+          ></video>
           {% if simli_agent_id %}
-          <!-- Simli avatar embed -->
+          <!-- Simli avatar embed (hidden until voice mode activated) -->
           <iframe
             id="simliFrame"
             src="https://app.simli.com/embed/{{ simli_agent_id }}"
             allow="camera; microphone; autoplay"
+            style="display: none;"
           ></iframe>
-          {% else %}
-          <!-- Fallback SVG avatar -->
-          <img src="/static/vonnegut-avatar.svg" alt="Kurt Vonnegut" />
           {% endif %}
         </div>
 
-        <span class="avatar-label" id="avatarLabel">{% if simli_agent_id %}Click to talk with Kurt{% else %}Kurt is listening...{% endif %}</span>
+        <span class="avatar-label" id="avatarLabel">Kurt is listening...</span>
 
-        {% if not simli_agent_id %}
+        {% if simli_agent_id %}
         <button class="voice-toggle" id="voiceToggle">
+          <span>&#9834;</span> Talk to Kurt
+        </button>
+        {% else %}
+        <button class="voice-toggle" id="voiceToggle" disabled style="opacity: 0.5;">
           <span>&#9834;</span> Voice mode (coming soon)
         </button>
         {% endif %}
@@ -678,11 +691,14 @@
     const typingIndicator = document.getElementById('typingIndicator');
     const voiceToggle = document.getElementById('voiceToggle');
     const avatarLabel = document.getElementById('avatarLabel');
+    const idleVideo = document.getElementById('idleVideo');
+    const simliFrame = document.getElementById('simliFrame');
 
     // ========== STATE ==========
     let chatHistory = [];
     let currentPassageIndex = 0;
     let currentParagraphs = [];
+    let voiceModeActive = false;
 
     // ========== HELPERS ==========
 
@@ -857,8 +873,27 @@
     });
 
     voiceToggle.addEventListener('click', () => {
-      // Voice mode coming soon
-      alert('Voice mode is coming soon. So it goes.');
+      if (!simliFrame) {
+        alert('Voice mode is coming soon. So it goes.');
+        return;
+      }
+
+      voiceModeActive = !voiceModeActive;
+      voiceToggle.classList.toggle('active', voiceModeActive);
+
+      if (voiceModeActive) {
+        // Switch to Simli
+        idleVideo.style.display = 'none';
+        simliFrame.style.display = 'block';
+        avatarLabel.textContent = 'Speaking with Kurt...';
+        voiceToggle.innerHTML = '<span>&#9632;</span> End conversation';
+      } else {
+        // Switch back to idle video
+        simliFrame.style.display = 'none';
+        idleVideo.style.display = 'block';
+        avatarLabel.textContent = 'Kurt is listening...';
+        voiceToggle.innerHTML = '<span>&#9834;</span> Talk to Kurt';
+      }
     });
 
     // ========== SCROLL TRACKING ==========
