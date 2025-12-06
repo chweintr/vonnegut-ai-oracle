@@ -342,6 +342,84 @@
       border-style: solid;
     }
 
+    /* Mode toggle buttons */
+    .mode-toggle {
+      display: flex;
+      gap: 0.25rem;
+      background: var(--cream);
+      padding: 0.25rem;
+      border-radius: 4px;
+      border: 1px solid var(--pencil);
+    }
+
+    .mode-btn {
+      font-family: 'Special Elite', monospace;
+      font-size: 0.7rem;
+      padding: 0.4rem 0.6rem;
+      background: transparent;
+      border: 1px solid transparent;
+      border-radius: 2px;
+      color: var(--pencil);
+      cursor: pointer;
+      transition: all 0.2s;
+      display: flex;
+      align-items: center;
+      gap: 0.3rem;
+    }
+
+    .mode-btn:hover {
+      background: white;
+      border-color: var(--pencil);
+    }
+
+    .mode-btn.active {
+      background: var(--ink);
+      color: var(--cream);
+      border-color: var(--ink);
+    }
+
+    .mode-btn span {
+      font-size: 0.9rem;
+    }
+
+    /* Speaking indicator */
+    .speaking-indicator {
+      display: none;
+      align-items: center;
+      gap: 0.4rem;
+      font-family: 'Special Elite', monospace;
+      font-size: 0.75rem;
+      color: var(--rust);
+      padding: 0.3rem 0;
+    }
+
+    .speaking-indicator.visible {
+      display: flex;
+    }
+
+    .speaking-indicator .wave {
+      display: flex;
+      gap: 2px;
+      align-items: center;
+    }
+
+    .speaking-indicator .wave span {
+      display: inline-block;
+      width: 3px;
+      height: 10px;
+      background: var(--rust);
+      animation: wave 0.5s ease-in-out infinite;
+    }
+
+    .speaking-indicator .wave span:nth-child(2) { animation-delay: 0.1s; }
+    .speaking-indicator .wave span:nth-child(3) { animation-delay: 0.2s; }
+    .speaking-indicator .wave span:nth-child(4) { animation-delay: 0.3s; }
+
+    @keyframes wave {
+      0%, 100% { height: 4px; }
+      50% { height: 12px; }
+    }
+
     /* Chat area */
     .chat-area {
       flex: 1;
@@ -710,9 +788,18 @@
 
         <span class="avatar-label" id="avatarLabel">Kurt is listening...</span>
 
-        <button class="voice-toggle" id="voiceToggle">
-          <span>&#9834;</span> Talk to Kurt
-        </button>
+        <!-- Mode Toggle -->
+        <div class="mode-toggle" id="modeToggle">
+          <button class="mode-btn active" data-mode="text" title="Text only (fast)">
+            <span>&#9998;</span> Text
+          </button>
+          <button class="mode-btn" data-mode="text-voice" title="Text + Voice (hear Kurt read)">
+            <span>&#9834;</span> Text + Voice
+          </button>
+          <button class="mode-btn" data-mode="talk" title="Talk to Kurt (Simli avatar)">
+            <span>&#9786;</span> Talk
+          </button>
+        </div>
       </div>
 
       <div class="chat-area">
@@ -728,6 +815,13 @@
 
         <div class="typing-indicator" id="typingIndicator">
           <span>.</span><span>.</span><span>.</span>
+        </div>
+
+        <div class="speaking-indicator" id="speakingIndicator">
+          <div class="wave">
+            <span></span><span></span><span></span><span></span>
+          </div>
+          Kurt is speaking...
         </div>
 
         <div class="input-area">
@@ -763,7 +857,8 @@
     const chatInput = document.getElementById('chatInput');
     const sendBtn = document.getElementById('sendBtn');
     const typingIndicator = document.getElementById('typingIndicator');
-    const voiceToggle = document.getElementById('voiceToggle');
+    const speakingIndicator = document.getElementById('speakingIndicator');
+    const modeToggle = document.getElementById('modeToggle');
     const avatarLabel = document.getElementById('avatarLabel');
     const idleVideo = document.getElementById('idleVideo');
     const simliMount = document.getElementById('simliMount');
@@ -772,8 +867,10 @@
     let chatHistory = [];
     let currentPassageIndex = 0;
     let currentParagraphs = [];
-    let voiceModeActive = false;
+    let currentMode = 'text'; // 'text', 'text-voice', 'talk'
     let simliWidget = null;
+    let audioQueue = [];
+    let isPlayingAudio = false;
 
     // ========== HELPERS ==========
 
@@ -824,6 +921,91 @@
       } else {
         avatarLabel.textContent = 'Kurt is listening...';
       }
+    }
+
+    function setSpeaking(visible) {
+      speakingIndicator.classList.toggle('visible', visible);
+      if (visible) {
+        avatarLabel.textContent = 'Kurt is speaking...';
+      }
+    }
+
+    // Create a streaming bot message element that we can append to
+    function createStreamingMessage() {
+      const welcome = chatMessages.querySelector('.welcome-message');
+      if (welcome) welcome.remove();
+
+      const msg = document.createElement('div');
+      msg.className = 'message bot streaming';
+      const rotation = (Math.random() - 0.5) * 0.8;
+      msg.style.transform = `rotate(${rotation}deg)`;
+
+      msg.innerHTML = `
+        <div class="text"></div>
+        <div class="signature" style="opacity: 0;">— K.V.<span class="bot-suffix"><span class="asterisk">*</span><span class="bot-letter" style="animation-delay: 0.8s">b</span><span class="bot-letter" style="animation-delay: 0.9s">o</span><span class="bot-letter" style="animation-delay: 1.0s">t</span></span></div>
+      `;
+
+      chatMessages.appendChild(msg);
+      chatMessages.scrollTop = chatMessages.scrollHeight;
+
+      return msg;
+    }
+
+    function finalizeStreamingMessage(msgElement, fullText) {
+      msgElement.classList.remove('streaming');
+      msgElement.querySelector('.signature').style.opacity = '1';
+      chatHistory.push({ type: 'bot', content: fullText });
+    }
+
+    // Text-to-speech using ElevenLabs
+    async function textToSpeech(text) {
+      try {
+        const response = await fetch('/api/tts', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ text })
+        });
+
+        const data = await response.json();
+        if (data.error) {
+          console.error('TTS error:', data.error);
+          return null;
+        }
+
+        return data.audio; // base64 encoded audio
+      } catch (err) {
+        console.error('TTS fetch error:', err);
+        return null;
+      }
+    }
+
+    // Play audio from base64
+    function playAudioBase64(base64Audio) {
+      return new Promise((resolve) => {
+        const audio = new Audio(`data:audio/mpeg;base64,${base64Audio}`);
+        audio.onended = resolve;
+        audio.onerror = resolve;
+        audio.play().catch(resolve);
+      });
+    }
+
+    // Process audio queue
+    async function processAudioQueue() {
+      if (isPlayingAudio || audioQueue.length === 0) return;
+
+      isPlayingAudio = true;
+      setSpeaking(true);
+
+      while (audioQueue.length > 0) {
+        const audioData = audioQueue.shift();
+        if (audioData) {
+          await playAudioBase64(audioData);
+        }
+      }
+
+      isPlayingAudio = false;
+      setSpeaking(false);
+      avatarLabel.textContent = 'Kurt is listening...';
     }
 
     function getCurrentContext() {
@@ -917,6 +1099,18 @@
       chatInput.value = '';
       sendBtn.disabled = true;
 
+      // Use streaming for text-voice mode, regular for text mode
+      if (currentMode === 'text-voice') {
+        await sendMessageStreaming(text);
+      } else {
+        await sendMessageRegular(text);
+      }
+
+      sendBtn.disabled = false;
+    }
+
+    // Regular (non-streaming) message send
+    async function sendMessageRegular(text) {
       setTyping(true);
 
       try {
@@ -934,7 +1128,6 @@
         setTyping(false);
 
         if (data.doodle) {
-          // Doodle response
           addMessage('', 'bot', data.doodle);
         } else if (data.response) {
           addMessage(data.response, 'bot');
@@ -944,8 +1137,92 @@
         addMessage('I seem to be having trouble. So it goes.', 'bot');
         console.error('Chat error:', err);
       }
+    }
 
-      sendBtn.disabled = false;
+    // Streaming message send with text + voice
+    async function sendMessageStreaming(text) {
+      setTyping(true);
+
+      // First check for doodle (non-streaming)
+      try {
+        const checkResponse = await fetch('/api/chat-stream', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            message: text,
+            context: getCurrentContext(),
+            history: chatHistory.slice(-12)
+          })
+        });
+
+        // Check if it's a doodle response (JSON, not SSE)
+        const contentType = checkResponse.headers.get('content-type');
+        if (contentType && contentType.includes('application/json')) {
+          const data = await checkResponse.json();
+          setTyping(false);
+          if (data.doodle) {
+            addMessage('', 'bot', data.doodle);
+            return;
+          }
+        }
+
+        // It's an SSE stream
+        setTyping(false);
+        const msgElement = createStreamingMessage();
+        const textElement = msgElement.querySelector('.text');
+        let fullText = '';
+
+        const reader = checkResponse.body.getReader();
+        const decoder = new TextDecoder();
+
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+
+          const chunk = decoder.decode(value);
+          const lines = chunk.split('\n');
+
+          for (const line of lines) {
+            if (line.startsWith('data: ')) {
+              try {
+                const data = JSON.parse(line.slice(6));
+
+                if (data.sentence) {
+                  // Append sentence to text
+                  fullText += (fullText ? ' ' : '') + data.sentence;
+                  textElement.innerHTML = fullText;
+                  chatMessages.scrollTop = chatMessages.scrollHeight;
+
+                  // Get TTS for this sentence (async, don't await)
+                  textToSpeech(data.sentence).then(audio => {
+                    if (audio) {
+                      audioQueue.push(audio);
+                      processAudioQueue();
+                    }
+                  });
+                }
+
+                if (data.done) {
+                  finalizeStreamingMessage(msgElement, fullText);
+                }
+
+                if (data.error) {
+                  console.error('Stream error:', data.error);
+                  textElement.innerHTML = 'I seem to be having trouble. So it goes.';
+                  finalizeStreamingMessage(msgElement, textElement.innerHTML);
+                }
+              } catch (e) {
+                // Ignore JSON parse errors for incomplete chunks
+              }
+            }
+          }
+        }
+
+      } catch (err) {
+        setTyping(false);
+        addMessage('I seem to be having trouble. So it goes.', 'bot');
+        console.error('Streaming error:', err);
+      }
     }
 
     // ========== EVENT LISTENERS ==========
@@ -963,70 +1240,74 @@
       }
     });
 
-    voiceToggle.addEventListener('click', async () => {
-      if (voiceModeActive) {
-        // End voice mode - remove Simli widget
-        if (simliWidget) {
-          simliMount.removeChild(simliWidget);
-          simliWidget = null;
-        }
-        voiceModeActive = false;
-        voiceToggle.classList.remove('active');
+    // Mode toggle buttons
+    modeToggle.addEventListener('click', async (e) => {
+      const btn = e.target.closest('.mode-btn');
+      if (!btn) return;
+
+      const newMode = btn.dataset.mode;
+      if (newMode === currentMode) return;
+
+      // Update button states
+      modeToggle.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+
+      // Handle mode transition
+      const oldMode = currentMode;
+      currentMode = newMode;
+
+      // Leaving talk mode - cleanup Simli
+      if (oldMode === 'talk' && simliWidget) {
+        simliMount.removeChild(simliWidget);
+        simliWidget = null;
         simliMount.style.display = 'none';
         idleVideo.style.display = 'block';
-        avatarLabel.textContent = 'Kurt is listening...';
-        voiceToggle.innerHTML = '<span>&#9834;</span> Talk to Kurt';
-        return;
       }
 
-      // Start voice mode - create Simli widget
-      avatarLabel.textContent = 'Connecting...';
-      voiceToggle.disabled = true;
+      // Entering talk mode - setup Simli
+      if (newMode === 'talk') {
+        avatarLabel.textContent = 'Connecting...';
 
-      try {
-        // Get token from backend
-        const tokenRes = await fetch('/api/simli-token', { method: 'POST' });
-        const tokenData = await tokenRes.json();
+        try {
+          const tokenRes = await fetch('/api/simli-token', { method: 'POST' });
+          const tokenData = await tokenRes.json();
 
-        if (tokenData.error) {
-          throw new Error(tokenData.error);
-        }
-
-        // Create Simli widget
-        simliWidget = document.createElement('simli-widget');
-        simliWidget.setAttribute('token', tokenData.token);
-        simliWidget.setAttribute('agent-id', tokenData.agentId);
-        simliWidget.setAttribute('face-id', tokenData.faceId);
-        simliWidget.style.width = '100%';
-        simliWidget.style.height = '100%';
-
-        // Hide idle video, show Simli mount
-        idleVideo.style.display = 'none';
-        simliMount.style.display = 'block';
-        simliMount.appendChild(simliWidget);
-
-        // Try to auto-start after a short delay
-        setTimeout(() => {
-          const startBtn = simliWidget.querySelector('button');
-          if (startBtn) {
-            startBtn.click();
+          if (tokenData.error) {
+            throw new Error(tokenData.error);
           }
-        }, 500);
 
-        voiceModeActive = true;
-        voiceToggle.classList.add('active');
-        avatarLabel.textContent = 'Speaking with Kurt...';
-        voiceToggle.innerHTML = '<span>&#9632;</span> End conversation';
+          simliWidget = document.createElement('simli-widget');
+          simliWidget.setAttribute('token', tokenData.token);
+          simliWidget.setAttribute('agent-id', tokenData.agentId);
+          simliWidget.setAttribute('face-id', tokenData.faceId);
+          simliWidget.style.width = '100%';
+          simliWidget.style.height = '100%';
 
-      } catch (err) {
-        console.error('Voice mode error:', err);
-        avatarLabel.textContent = 'Connection failed. So it goes.';
-        setTimeout(() => {
-          avatarLabel.textContent = 'Kurt is listening...';
-        }, 3000);
+          idleVideo.style.display = 'none';
+          simliMount.style.display = 'block';
+          simliMount.appendChild(simliWidget);
+
+          setTimeout(() => {
+            const startBtn = simliWidget.querySelector('button');
+            if (startBtn) startBtn.click();
+          }, 500);
+
+          avatarLabel.textContent = 'Speaking with Kurt...';
+
+        } catch (err) {
+          console.error('Talk mode error:', err);
+          avatarLabel.textContent = 'Connection failed. So it goes.';
+          // Revert to text mode
+          currentMode = 'text';
+          modeToggle.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('active'));
+          modeToggle.querySelector('[data-mode="text"]').classList.add('active');
+          setTimeout(() => {
+            avatarLabel.textContent = 'Kurt is listening...';
+          }, 3000);
+        }
+      } else {
+        avatarLabel.textContent = 'Kurt is listening...';
       }
-
-      voiceToggle.disabled = false;
     });
 
     // ========== SCROLL TRACKING ==========

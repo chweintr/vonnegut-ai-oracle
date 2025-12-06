@@ -4,7 +4,7 @@ Vonnebot: A Kurt Vonnegut Inspired Reading Companion
 Flask backend with beautiful typewriter-style frontend
 """
 
-from flask import Flask, render_template, request, jsonify, send_from_directory
+from flask import Flask, render_template, request, jsonify, send_from_directory, Response
 import openai
 import requests
 import os
@@ -12,6 +12,8 @@ import time
 import uuid
 import json
 import random
+import re
+import base64
 from pathlib import Path
 from dotenv import load_dotenv
 
@@ -40,6 +42,10 @@ SIMLI_FACE_ID = os.getenv("SIMLI_FACE_ID")
 LIVEKIT_URL = os.getenv("LIVEKIT_URL")
 LIVEKIT_API_KEY = os.getenv("LIVEKIT_API_KEY")
 LIVEKIT_API_SECRET = os.getenv("LIVEKIT_API_SECRET")
+
+# ElevenLabs configuration
+ELEVENLABS_API_KEY = os.getenv("ELEVENLABS_API_KEY")
+ELEVENLABS_VOICE_ID = os.getenv("ELEVENLABS_VOICE_ID")
 
 # Load Vonnegut system prompt
 PROMPT_PATH = Path("prompts_base_prompt.txt")
@@ -252,6 +258,155 @@ Keep this context in mind when responding. You can reference it naturally withou
         return jsonify({
             "response": f"I seem to be having trouble. So it goes. ({str(e)})"
         })
+
+
+@app.route('/api/chat-stream', methods=['POST'])
+def chat_stream():
+    """
+    Streaming chat endpoint using Server-Sent Events (SSE).
+    Streams GPT-4o response sentence by sentence for synchronized text + voice.
+    """
+    data = request.json
+    user_message = data.get('message', '')
+    visible_context = data.get('context', '')
+    chat_history = data.get('history', [])
+
+    if not user_message:
+        return jsonify({"error": "No message provided"}), 400
+
+    # Check for doodle (no streaming for doodles)
+    doodle = check_for_doodle(user_message)
+    if doodle:
+        return jsonify({"doodle": doodle})
+
+    if not openai_client:
+        return jsonify({"error": "OpenAI API key not configured"}), 500
+
+    # Build messages for the API
+    messages = [{"role": "system", "content": SYSTEM_PROMPT}]
+
+    if visible_context:
+        context_msg = f"""
+The reader is currently looking at this passage:
+
+---
+{visible_context[:2000]}
+---
+
+Keep this context in mind when responding. You can reference it naturally without the user having to point it out.
+"""
+        messages.append({"role": "system", "content": context_msg})
+
+    for msg in chat_history[-12:]:
+        role = "user" if msg.get("type") == "user" else "assistant"
+        messages.append({"role": role, "content": msg.get("content", "")})
+
+    messages.append({"role": "user", "content": user_message})
+
+    def generate():
+        """Generator that yields SSE events with sentences."""
+        try:
+            # Stream from OpenAI
+            stream = openai_client.chat.completions.create(
+                model="gpt-4o",
+                messages=messages,
+                max_tokens=600,
+                temperature=0.8,
+                stream=True
+            )
+
+            buffer = ""
+            sentence_endings = re.compile(r'([.!?])\s+')
+
+            for chunk in stream:
+                if chunk.choices[0].delta.content:
+                    buffer += chunk.choices[0].delta.content
+
+                    # Check for complete sentences
+                    while True:
+                        match = sentence_endings.search(buffer)
+                        if match:
+                            # Extract the sentence (including the punctuation)
+                            end_pos = match.end()
+                            sentence = buffer[:end_pos].strip()
+                            buffer = buffer[end_pos:]
+
+                            if sentence:
+                                # Send the sentence as an SSE event
+                                event_data = json.dumps({"sentence": sentence})
+                                yield f"data: {event_data}\n\n"
+                        else:
+                            break
+
+            # Send any remaining text
+            if buffer.strip():
+                event_data = json.dumps({"sentence": buffer.strip()})
+                yield f"data: {event_data}\n\n"
+
+            # Send completion event
+            yield f"data: {json.dumps({'done': True})}\n\n"
+
+        except Exception as e:
+            error_data = json.dumps({"error": str(e)})
+            yield f"data: {error_data}\n\n"
+
+    return Response(
+        generate(),
+        mimetype='text/event-stream',
+        headers={
+            'Cache-Control': 'no-cache',
+            'Connection': 'keep-alive',
+            'X-Accel-Buffering': 'no'
+        }
+    )
+
+
+@app.route('/api/tts', methods=['POST'])
+def text_to_speech():
+    """
+    Convert text to speech using ElevenLabs.
+    Returns base64-encoded audio.
+    """
+    if not ELEVENLABS_API_KEY or not ELEVENLABS_VOICE_ID:
+        return jsonify({"error": "ElevenLabs not configured"}), 500
+
+    data = request.json
+    text = data.get('text', '')
+
+    if not text:
+        return jsonify({"error": "No text provided"}), 400
+
+    try:
+        response = requests.post(
+            f"https://api.elevenlabs.io/v1/text-to-speech/{ELEVENLABS_VOICE_ID}",
+            headers={
+                "Accept": "audio/mpeg",
+                "Content-Type": "application/json",
+                "xi-api-key": ELEVENLABS_API_KEY
+            },
+            json={
+                "text": text,
+                "model_id": "eleven_turbo_v2",  # Faster model for lower latency
+                "voice_settings": {
+                    "stability": 0.5,
+                    "similarity_boost": 0.75
+                }
+            },
+            timeout=30
+        )
+
+        if response.status_code == 200:
+            # Return base64-encoded audio
+            audio_base64 = base64.b64encode(response.content).decode('utf-8')
+            return jsonify({
+                "audio": audio_base64,
+                "content_type": "audio/mpeg"
+            })
+        else:
+            return jsonify({"error": f"ElevenLabs error: {response.status_code}"}), 500
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 
 # -----------------------------------------------------------------------------
