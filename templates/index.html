@@ -4,6 +4,8 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Vonnebot</title>
+  <!-- LiveKit Client SDK -->
+  <script src="https://cdn.jsdelivr.net/npm/livekit-client/dist/livekit-client.umd.js"></script>
   <style>
     @import url('https://fonts.googleapis.com/css2?family=Special+Elite&family=Libre+Baskerville:ital,wght@0,400;0,700;1,400&family=Caveat:wght@400;700&display=swap');
 
@@ -619,7 +621,7 @@
     <aside class="companion-pane">
       <div class="avatar-area">
         <div class="avatar-container has-video" id="avatarContainer">
-          <!-- Idle loop video -->
+          <!-- Idle loop video (default) -->
           <video
             id="idleVideo"
             src="/static/vonnegut_blinking.mp4"
@@ -628,20 +630,20 @@
             muted
             playsinline
           ></video>
-          {% if simli_agent_id %}
-          <!-- Simli avatar embed (hidden until voice mode activated) -->
-          <iframe
-            id="simliFrame"
-            src="https://app.simli.com/embed/{{ simli_agent_id }}"
-            allow="camera; microphone; autoplay"
+          <!-- LiveKit video (shown during voice mode) -->
+          <video
+            id="livekitVideo"
+            autoplay
+            playsinline
             style="display: none;"
-          ></iframe>
-          {% endif %}
+          ></video>
+          <!-- LiveKit audio -->
+          <audio id="livekitAudio" autoplay style="display: none;"></audio>
         </div>
 
         <span class="avatar-label" id="avatarLabel">Kurt is listening...</span>
 
-        {% if simli_agent_id %}
+        {% if livekit_url %}
         <button class="voice-toggle" id="voiceToggle">
           <span>&#9834;</span> Talk to Kurt
         </button>
@@ -692,13 +694,15 @@
     const voiceToggle = document.getElementById('voiceToggle');
     const avatarLabel = document.getElementById('avatarLabel');
     const idleVideo = document.getElementById('idleVideo');
-    const simliFrame = document.getElementById('simliFrame');
+    const livekitVideo = document.getElementById('livekitVideo');
+    const livekitAudio = document.getElementById('livekitAudio');
 
     // ========== STATE ==========
     let chatHistory = [];
     let currentPassageIndex = 0;
     let currentParagraphs = [];
     let voiceModeActive = false;
+    let livekitRoom = null;
 
     // ========== HELPERS ==========
 
@@ -872,28 +876,85 @@
       }
     });
 
-    voiceToggle.addEventListener('click', () => {
-      if (!simliFrame) {
-        alert('Voice mode is coming soon. So it goes.');
-        return;
-      }
-
-      voiceModeActive = !voiceModeActive;
-      voiceToggle.classList.toggle('active', voiceModeActive);
-
+    voiceToggle.addEventListener('click', async () => {
       if (voiceModeActive) {
-        // Switch to Simli
-        idleVideo.style.display = 'none';
-        simliFrame.style.display = 'block';
-        avatarLabel.textContent = 'Speaking with Kurt...';
-        voiceToggle.innerHTML = '<span>&#9632;</span> End conversation';
-      } else {
-        // Switch back to idle video
-        simliFrame.style.display = 'none';
+        // Disconnect from LiveKit
+        if (livekitRoom) {
+          livekitRoom.disconnect();
+          livekitRoom = null;
+        }
+        voiceModeActive = false;
+        voiceToggle.classList.remove('active');
+        livekitVideo.style.display = 'none';
         idleVideo.style.display = 'block';
         avatarLabel.textContent = 'Kurt is listening...';
         voiceToggle.innerHTML = '<span>&#9834;</span> Talk to Kurt';
+        return;
       }
+
+      // Start voice mode - connect to LiveKit
+      avatarLabel.textContent = 'Connecting...';
+      voiceToggle.disabled = true;
+
+      try {
+        // Get token from backend
+        const tokenRes = await fetch('/api/livekit-token', { method: 'POST' });
+        const tokenData = await tokenRes.json();
+
+        if (tokenData.error) {
+          throw new Error(tokenData.error);
+        }
+
+        // Connect to LiveKit room
+        livekitRoom = new LivekitClient.Room();
+
+        // Handle remote tracks (video/audio from agent)
+        livekitRoom.on(LivekitClient.RoomEvent.TrackSubscribed, (track, publication, participant) => {
+          console.log('Track subscribed:', track.kind);
+          if (track.kind === 'video') {
+            track.attach(livekitVideo);
+            idleVideo.style.display = 'none';
+            livekitVideo.style.display = 'block';
+          } else if (track.kind === 'audio') {
+            track.attach(livekitAudio);
+          }
+        });
+
+        livekitRoom.on(LivekitClient.RoomEvent.TrackUnsubscribed, (track) => {
+          track.detach();
+        });
+
+        livekitRoom.on(LivekitClient.RoomEvent.Disconnected, () => {
+          console.log('Disconnected from room');
+          voiceModeActive = false;
+          voiceToggle.classList.remove('active');
+          livekitVideo.style.display = 'none';
+          idleVideo.style.display = 'block';
+          avatarLabel.textContent = 'Kurt is listening...';
+          voiceToggle.innerHTML = '<span>&#9834;</span> Talk to Kurt';
+        });
+
+        // Connect
+        await livekitRoom.connect(tokenData.url, tokenData.token);
+        console.log('Connected to room:', tokenData.room);
+
+        // Enable microphone
+        await livekitRoom.localParticipant.setMicrophoneEnabled(true);
+
+        voiceModeActive = true;
+        voiceToggle.classList.add('active');
+        avatarLabel.textContent = 'Speaking with Kurt...';
+        voiceToggle.innerHTML = '<span>&#9632;</span> End conversation';
+
+      } catch (err) {
+        console.error('Voice mode error:', err);
+        avatarLabel.textContent = 'Connection failed. So it goes.';
+        setTimeout(() => {
+          avatarLabel.textContent = 'Kurt is listening...';
+        }, 3000);
+      }
+
+      voiceToggle.disabled = false;
     });
 
     // ========== SCROLL TRACKING ==========

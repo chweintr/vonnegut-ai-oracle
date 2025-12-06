@@ -7,8 +7,11 @@ Flask backend with beautiful typewriter-style frontend
 from flask import Flask, render_template, request, jsonify, send_from_directory
 import openai
 import os
+import time
+import uuid
 from pathlib import Path
 from dotenv import load_dotenv
+from livekit import api
 
 load_dotenv()
 
@@ -22,6 +25,11 @@ openai_client = openai.OpenAI(api_key=OPENAI_API_KEY) if OPENAI_API_KEY else Non
 
 # Simli configuration
 SIMLI_AGENT_ID = os.getenv("SIMLI_AGENT_ID")
+
+# LiveKit configuration
+LIVEKIT_URL = os.getenv("LIVEKIT_URL")
+LIVEKIT_API_KEY = os.getenv("LIVEKIT_API_KEY")
+LIVEKIT_API_SECRET = os.getenv("LIVEKIT_API_SECRET")
 
 # Load Vonnegut system prompt
 PROMPT_PATH = Path("prompts_base_prompt.txt")
@@ -54,7 +62,8 @@ def index():
     return render_template(
         'index.html',
         texts=list(AVAILABLE_TEXTS.keys()),
-        simli_agent_id=SIMLI_AGENT_ID
+        simli_agent_id=SIMLI_AGENT_ID,
+        livekit_url=LIVEKIT_URL
     )
 
 
@@ -89,6 +98,33 @@ def get_text(text_name):
         "title": text_name,
         "paragraphs": paragraphs,
         "raw": content
+    })
+
+
+@app.route('/api/livekit-token', methods=['POST'])
+def get_livekit_token():
+    """Generate a LiveKit token for the user to join a room."""
+    if not LIVEKIT_API_KEY or not LIVEKIT_API_SECRET:
+        return jsonify({"error": "LiveKit not configured"}), 500
+
+    # Create a unique room name and user identity
+    room_name = f"vonnebot-{uuid.uuid4().hex[:8]}"
+    user_identity = f"user-{uuid.uuid4().hex[:8]}"
+
+    # Create access token
+    token = api.AccessToken(LIVEKIT_API_KEY, LIVEKIT_API_SECRET)
+    token.with_identity(user_identity)
+    token.with_name("Reader")
+    token.with_grants(api.VideoGrants(
+        room_join=True,
+        room=room_name,
+    ))
+
+    return jsonify({
+        "token": token.to_jwt(),
+        "room": room_name,
+        "identity": user_identity,
+        "url": LIVEKIT_URL
     })
 
 
