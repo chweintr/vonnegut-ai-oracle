@@ -210,4 +210,144 @@ Ask if they'd be willing to:
 
 ---
 
+## Three Interaction Modes (Target Architecture)
+
+We want three distinct modes, each serving different use cases:
+
+### Mode 1: Text → Text (WORKING ✓)
+- User types question
+- GPT-4o responds (~1-2 sec)
+- Text appears instantly
+- **Status**: Fully working, fast, great UX
+
+### Mode 2: Text → Text + Streaming Voice (TO BUILD)
+- User types question
+- GPT-4o streams response
+- Text types out in real-time AS voice reads aloud
+- Text and audio are synchronized
+- **Status**: Not yet implemented
+
+### Mode 3: Voice → Voice + Video (IN PROGRESS)
+- User speaks to Simli avatar
+- Full voice conversation with lip-synced video
+- Requires LiveKit + Simli integration
+- **Status**: Simli widget loads but needs LiveKit agent for RAG/context
+
+---
+
+## Mode 2: Streaming Text + Voice Implementation Plan
+
+### The Goal
+Text types out character-by-character synchronized with ElevenLabs reading it aloud. User sees AND hears the response simultaneously.
+
+### Architecture
+
+```
+User types question
+        │
+        ▼
+┌─────────────────┐
+│  GPT-4o         │
+│  (streaming)    │──── chunks arrive every ~50-100ms
+└────────┬────────┘
+         │
+         ▼
+┌─────────────────────────────────────────┐
+│           CHUNK BUFFER                   │
+│  Accumulate until sentence boundary      │
+│  (period, question mark, exclamation)    │
+└────────┬────────────────────┬───────────┘
+         │                    │
+         ▼                    ▼
+┌─────────────────┐  ┌─────────────────┐
+│  Frontend       │  │  ElevenLabs     │
+│  (type out      │  │  (TTS stream)   │
+│   text)         │  │                 │
+└─────────────────┘  └─────────────────┘
+         │                    │
+         ▼                    ▼
+    Text appears         Audio plays
+    (typing effect)      (synchronized)
+```
+
+### Key Technical Challenges
+
+1. **Sentence-level chunking**: Can't send word-by-word to ElevenLabs (too choppy). Need to buffer until sentence boundaries.
+
+2. **Synchronization**: Text typing speed must match audio duration. Options:
+   - Calculate typing speed based on ElevenLabs audio duration
+   - Use ElevenLabs word-level timestamps (if available)
+   - Approximate: ~150 words per minute = ~12 chars/second
+
+3. **Streaming TTS**: ElevenLabs supports streaming—audio starts before full text is processed.
+
+### Implementation Steps
+
+#### Step 1: Backend Streaming Endpoint
+- [ ] Create `/api/chat-stream` endpoint using Server-Sent Events (SSE)
+- [ ] Stream GPT-4o response chunks to frontend
+- [ ] Buffer chunks until sentence boundaries
+- [ ] Send complete sentences as events
+
+#### Step 2: ElevenLabs Streaming Integration
+- [ ] Add ElevenLabs streaming TTS endpoint
+- [ ] Accept sentence, return audio stream
+- [ ] Use "eleven_turbo_v2" model for lower latency
+
+#### Step 3: Frontend Synchronized Playback
+- [ ] Receive SSE chunks from backend
+- [ ] For each sentence:
+  - Start typing animation
+  - Fetch audio from ElevenLabs
+  - Play audio
+  - Time typing to match audio duration
+- [ ] Queue sentences so they play sequentially
+
+#### Step 4: UI Toggle
+- [ ] Add mode selector: [Text] [Text + Voice] [Talk to Kurt]
+- [ ] "Text + Voice" activates streaming mode
+- [ ] Show audio waveform or speaker icon when voice is active
+
+### Fallback Strategy
+If synchronization is too complex:
+- **Option B**: Text appears fast (as now), then 🔊 button to replay with voice
+- Still useful, much simpler to implement
+- Can upgrade to full sync later
+
+### Environment Variables Needed
+```
+ELEVENLABS_API_KEY=xxx
+ELEVENLABS_VOICE_ID=xxx  # Vonnegut-like voice
+```
+
+### Cost Estimate
+- ElevenLabs: ~$0.02 per response (400 chars average)
+- At 1000 responses/day: ~$20/day
+- Turbo model is same price but faster
+
+---
+
+## Current Status Summary
+
+| Feature | Status | Notes |
+|---------|--------|-------|
+| Text chat | ✅ Working | Fast, great UX |
+| K.V.*bot signature | ✅ Working | Animated typewriter effect |
+| Doodle responses | ✅ Working | SVG drawings with random triggers |
+| Disclaimer | ✅ Working | Collapsible footer |
+| Idle video avatar | ✅ Working | Blinking Vonnegut loop |
+| Simli widget | 🟡 Partial | Loads but no RAG/context |
+| Text + Voice (Mode 2) | ❌ Not started | Plan documented above |
+| LiveKit agent (Mode 3) | ❌ Not started | Requires separate service |
+
+---
+
+## Next Steps (Priority Order)
+
+1. **Mode 2 (Text + Voice)**: Implement streaming endpoint + ElevenLabs integration
+2. **Test Simli widget**: Verify current widget actually works for basic conversation
+3. **Mode 3 (LiveKit)**: Deploy agent backend, connect Simli for RAG-powered voice
+
+---
+
 *"I tell you, we are here on Earth to fart around, and don't let anybody tell you different." — But how fast can we fart around? That's the latency question.*
