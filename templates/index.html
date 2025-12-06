@@ -1,0 +1,873 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Vonnebot</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Special+Elite&family=Libre+Baskerville:ital,wght@0,400;0,700;1,400&family=Caveat:wght@400;700&display=swap');
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    :root {
+      --cream: #f4f1e8;
+      --paper: #ebe6d9;
+      --ink: #2a2520;
+      --pencil: #5c5549;
+      --rust: #c4653a;
+      --gold: #d4a853;
+      --blue-ink: #3d5a73;
+    }
+
+    body {
+      background: var(--cream);
+      min-height: 100vh;
+      font-family: 'Libre Baskerville', Georgia, serif;
+      color: var(--ink);
+      overflow-x: hidden;
+    }
+
+    /* Noise texture overlay */
+    body::before {
+      content: '';
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      opacity: 0.03;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%' height='100%' filter='url(%23noise)'/%3E%3C/svg%3E");
+      z-index: 1000;
+    }
+
+    .container {
+      display: grid;
+      grid-template-columns: 1fr 380px;
+      grid-template-rows: auto 1fr;
+      min-height: 100vh;
+      max-width: 1400px;
+      margin: 0 auto;
+    }
+
+    /* ========== HEADER ========== */
+    .header {
+      grid-column: 1 / -1;
+      padding: 1.5rem 2rem;
+      display: flex;
+      align-items: baseline;
+      gap: 1rem;
+      border-bottom: 1px solid var(--pencil);
+      position: relative;
+    }
+
+    .header::after {
+      content: '';
+      position: absolute;
+      bottom: -3px;
+      left: 2rem;
+      right: 2rem;
+      height: 1px;
+      background: var(--pencil);
+      opacity: 0.3;
+    }
+
+    .logo {
+      font-family: 'Special Elite', monospace;
+      font-size: 1.8rem;
+      letter-spacing: 0.05em;
+      color: var(--ink);
+      transform: rotate(-1deg);
+    }
+
+    .tagline {
+      font-family: 'Caveat', cursive;
+      font-size: 1.2rem;
+      color: var(--pencil);
+      margin-left: auto;
+      transform: rotate(1deg);
+    }
+
+    /* Asterisk doodle */
+    .asterisk-doodle {
+      font-family: 'Caveat', cursive;
+      font-size: 2rem;
+      color: var(--rust);
+      opacity: 0.6;
+      margin-left: 1rem;
+    }
+
+    /* ========== READING PANE ========== */
+    .reading-pane {
+      padding: 2rem;
+      border-right: 1px solid var(--pencil);
+      display: flex;
+      flex-direction: column;
+      gap: 1.5rem;
+      position: relative;
+    }
+
+    .book-select {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+    }
+
+    .book-select-label {
+      font-family: 'Special Elite', monospace;
+      font-size: 0.85rem;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--pencil);
+    }
+
+    .book-select select {
+      flex: 1;
+      padding: 0.6rem 1rem;
+      font-family: 'Libre Baskerville', serif;
+      font-size: 0.95rem;
+      background: var(--paper);
+      border: 1px solid var(--pencil);
+      border-radius: 2px;
+      color: var(--ink);
+      cursor: pointer;
+      max-width: 400px;
+    }
+
+    .page-container {
+      flex: 1;
+      background: white;
+      border: 1px solid var(--pencil);
+      border-radius: 2px;
+      padding: 3rem;
+      position: relative;
+      box-shadow:
+        2px 2px 0 var(--paper),
+        4px 4px 0 #e0dbd0,
+        6px 6px 12px rgba(0,0,0,0.08);
+      overflow-y: auto;
+      max-height: calc(100vh - 200px);
+    }
+
+    /* Page edge effect */
+    .page-container::before {
+      content: '';
+      position: absolute;
+      right: 0;
+      top: 10%;
+      bottom: 10%;
+      width: 3px;
+      background: linear-gradient(
+        to bottom,
+        transparent,
+        var(--pencil) 20%,
+        var(--pencil) 80%,
+        transparent
+      );
+      opacity: 0.1;
+    }
+
+    .chapter-title {
+      font-family: 'Special Elite', monospace;
+      font-size: 0.8rem;
+      text-transform: uppercase;
+      letter-spacing: 0.15em;
+      color: var(--pencil);
+      margin-bottom: 2rem;
+      padding-bottom: 0.5rem;
+      border-bottom: 1px dashed var(--pencil);
+    }
+
+    .book-text {
+      font-size: 1.05rem;
+      line-height: 1.9;
+      color: var(--ink);
+      max-width: 60ch;
+    }
+
+    .book-text p {
+      margin-bottom: 1.5em;
+      text-indent: 1.5em;
+    }
+
+    .book-text p:first-of-type {
+      text-indent: 0;
+    }
+
+    .book-text p:first-of-type::first-letter {
+      font-size: 3.5em;
+      float: left;
+      line-height: 0.8;
+      margin-right: 0.1em;
+      margin-top: 0.1em;
+      color: var(--rust);
+    }
+
+    /* Current reading indicator */
+    .current-passage {
+      background: linear-gradient(
+        90deg,
+        rgba(212, 168, 83, 0.15) 0%,
+        rgba(212, 168, 83, 0.08) 100%
+      );
+      margin-left: -1rem;
+      padding-left: 1rem;
+      border-left: 2px solid var(--gold);
+    }
+
+    /* Empty state */
+    .empty-state {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100%;
+      color: var(--pencil);
+      text-align: center;
+      gap: 1rem;
+      padding: 3rem;
+    }
+
+    .empty-state-icon {
+      font-size: 3rem;
+      opacity: 0.4;
+    }
+
+    .empty-state-text {
+      font-family: 'Caveat', cursive;
+      font-size: 1.3rem;
+    }
+
+    /* ========== COMPANION PANE ========== */
+    .companion-pane {
+      padding: 2rem 1.5rem;
+      display: flex;
+      flex-direction: column;
+      gap: 1.5rem;
+      background: var(--paper);
+    }
+
+    /* Avatar area */
+    .avatar-area {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 1rem;
+    }
+
+    .avatar-container {
+      width: 140px;
+      height: 140px;
+      border-radius: 50%;
+      overflow: hidden;
+      border: 2px solid var(--pencil);
+      background: var(--cream);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+    }
+
+    .avatar-container img {
+      width: 90%;
+      height: 90%;
+      object-fit: contain;
+    }
+
+    /* Breathing animation behind avatar */
+    .avatar-container::before {
+      content: '';
+      position: absolute;
+      width: 100%;
+      height: 100%;
+      background: radial-gradient(circle, rgba(92, 85, 73, 0.1) 0%, transparent 70%);
+      animation: breathe 4s ease-in-out infinite;
+    }
+
+    @keyframes breathe {
+      0%, 100% { transform: scale(0.95); opacity: 0.3; }
+      50% { transform: scale(1.05); opacity: 0.6; }
+    }
+
+    .avatar-label {
+      font-family: 'Caveat', cursive;
+      font-size: 1.1rem;
+      color: var(--pencil);
+      text-align: center;
+    }
+
+    .voice-toggle {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      font-family: 'Special Elite', monospace;
+      font-size: 0.75rem;
+      color: var(--pencil);
+      cursor: pointer;
+      padding: 0.4rem 0.8rem;
+      border: 1px dashed var(--pencil);
+      border-radius: 2px;
+      background: transparent;
+      transition: all 0.2s;
+    }
+
+    .voice-toggle:hover {
+      background: var(--cream);
+      border-style: solid;
+    }
+
+    .voice-toggle.active {
+      background: var(--rust);
+      color: var(--cream);
+      border-color: var(--rust);
+      border-style: solid;
+    }
+
+    /* Chat area */
+    .chat-area {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+      min-height: 0;
+    }
+
+    .chat-header {
+      font-family: 'Special Elite', monospace;
+      font-size: 0.8rem;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--pencil);
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .chat-messages {
+      flex: 1;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+      padding-right: 0.5rem;
+      max-height: 45vh;
+    }
+
+    .chat-messages::-webkit-scrollbar {
+      width: 4px;
+    }
+
+    .chat-messages::-webkit-scrollbar-thumb {
+      background: var(--pencil);
+      border-radius: 2px;
+    }
+
+    /* Message styling */
+    .message {
+      max-width: 95%;
+      line-height: 1.6;
+      font-size: 0.95rem;
+    }
+
+    .message.bot {
+      align-self: flex-start;
+      position: relative;
+      padding-left: 1rem;
+    }
+
+    .message.bot::before {
+      content: '"';
+      position: absolute;
+      left: 0;
+      top: -0.2em;
+      font-family: 'Libre Baskerville', serif;
+      font-size: 1.5em;
+      color: var(--rust);
+      opacity: 0.6;
+    }
+
+    .message.bot .text {
+      font-style: italic;
+      color: var(--ink);
+    }
+
+    .message.bot .signature {
+      font-family: 'Caveat', cursive;
+      font-size: 0.9rem;
+      color: var(--pencil);
+      margin-top: 0.5rem;
+      text-align: right;
+    }
+
+    .message.user {
+      align-self: flex-end;
+      background: white;
+      padding: 0.8rem 1rem;
+      border-radius: 2px;
+      border: 1px solid var(--pencil);
+      box-shadow: 2px 2px 0 var(--cream);
+    }
+
+    /* Typing indicator */
+    .typing-indicator {
+      display: none;
+      align-items: center;
+      gap: 0.3rem;
+      padding: 0.5rem 0;
+      font-family: 'Special Elite', monospace;
+      font-size: 0.8rem;
+      color: var(--pencil);
+    }
+
+    .typing-indicator.visible {
+      display: flex;
+    }
+
+    .typing-indicator span {
+      display: inline-block;
+      animation: typewriter-blink 1s steps(2) infinite;
+    }
+
+    .typing-indicator span:nth-child(2) { animation-delay: 0.15s; }
+    .typing-indicator span:nth-child(3) { animation-delay: 0.3s; }
+
+    @keyframes typewriter-blink {
+      0%, 100% { opacity: 0.3; }
+      50% { opacity: 1; }
+    }
+
+    /* Input area */
+    .input-area {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+
+    .chat-input {
+      width: 100%;
+      padding: 0.8rem 1rem;
+      font-family: 'Libre Baskerville', serif;
+      font-size: 0.95rem;
+      background: white;
+      border: 1px solid var(--pencil);
+      border-radius: 2px;
+      color: var(--ink);
+      resize: none;
+      min-height: 60px;
+    }
+
+    .chat-input::placeholder {
+      color: var(--pencil);
+      font-style: italic;
+    }
+
+    .chat-input:focus {
+      outline: none;
+      border-color: var(--rust);
+      box-shadow: 0 0 0 1px var(--rust);
+    }
+
+    .send-btn {
+      align-self: flex-end;
+      font-family: 'Special Elite', monospace;
+      font-size: 0.8rem;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      padding: 0.5rem 1.2rem;
+      background: var(--ink);
+      color: var(--cream);
+      border: none;
+      border-radius: 2px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .send-btn:hover {
+      background: var(--rust);
+      transform: translateY(-1px);
+    }
+
+    .send-btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    /* Footer */
+    .footer-note {
+      font-family: 'Caveat', cursive;
+      font-size: 1rem;
+      color: var(--pencil);
+      text-align: center;
+      opacity: 0.6;
+      padding-top: 0.5rem;
+      border-top: 1px dashed var(--pencil);
+    }
+
+    /* Registration marks */
+    .reg-mark {
+      position: fixed;
+      width: 16px;
+      height: 16px;
+      opacity: 0.2;
+      z-index: 10;
+    }
+
+    .reg-mark::before,
+    .reg-mark::after {
+      content: '';
+      position: absolute;
+      background: var(--pencil);
+    }
+
+    .reg-mark::before {
+      width: 100%;
+      height: 1px;
+      top: 50%;
+    }
+
+    .reg-mark::after {
+      width: 1px;
+      height: 100%;
+      left: 50%;
+    }
+
+    .reg-mark.top-left { top: 1rem; left: 1rem; }
+    .reg-mark.bottom-right { bottom: 1rem; right: 1rem; }
+
+    /* Welcome message */
+    .welcome-message {
+      text-align: center;
+      color: var(--pencil);
+      font-style: italic;
+      padding: 2rem 1rem;
+    }
+
+    /* ========== RESPONSIVE ========== */
+    @media (max-width: 900px) {
+      .container {
+        grid-template-columns: 1fr;
+        grid-template-rows: auto 1fr 1fr;
+      }
+
+      .reading-pane {
+        border-right: none;
+        border-bottom: 1px solid var(--pencil);
+      }
+
+      .page-container {
+        max-height: 50vh;
+      }
+
+      .chat-messages {
+        max-height: 30vh;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="reg-mark top-left"></div>
+  <div class="reg-mark bottom-right"></div>
+
+  <div class="container">
+    <header class="header">
+      <h1 class="logo">VONNEBOT</h1>
+      <span class="asterisk-doodle">*</span>
+      <span class="tagline">And so it reads...</span>
+    </header>
+
+    <!-- Reading Pane -->
+    <main class="reading-pane">
+      <div class="book-select">
+        <label class="book-select-label" for="book">Text:</label>
+        <select id="book">
+          <option value="">-- Select a text --</option>
+          {% for text in texts %}
+          <option value="{{ text }}">{{ text }}</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div class="page-container">
+        <div id="bookContent">
+          <div class="empty-state">
+            <div class="empty-state-icon">*</div>
+            <div class="empty-state-text">Select a text above to begin reading with Kurt.</div>
+          </div>
+        </div>
+      </div>
+    </main>
+
+    <!-- Companion Pane -->
+    <aside class="companion-pane">
+      <div class="avatar-area">
+        <div class="avatar-container">
+          <img src="/static/vonnegut-avatar.svg" alt="Kurt Vonnegut" />
+        </div>
+
+        <span class="avatar-label" id="avatarLabel">Kurt is listening...</span>
+
+        <button class="voice-toggle" id="voiceToggle">
+          <span>&#9834;</span> Voice mode (coming soon)
+        </button>
+      </div>
+
+      <div class="chat-area">
+        <div class="chat-header">
+          <span>&#9998;</span> Conversation
+        </div>
+
+        <div class="chat-messages" id="chatMessages">
+          <div class="welcome-message">
+            Ask me anything about what you're reading. Or just say hello.
+          </div>
+        </div>
+
+        <div class="typing-indicator" id="typingIndicator">
+          <span>.</span><span>.</span><span>.</span>
+        </div>
+
+        <div class="input-area">
+          <textarea
+            class="chat-input"
+            id="chatInput"
+            placeholder="What do you make of this passage?"
+          ></textarea>
+          <button class="send-btn" id="sendBtn">Send</button>
+        </div>
+      </div>
+
+      <div class="footer-note">So it goes.</div>
+    </aside>
+  </div>
+
+  <script>
+    // ========== DOM REFS ==========
+    const bookSelect = document.getElementById('book');
+    const bookContent = document.getElementById('bookContent');
+    const chatMessages = document.getElementById('chatMessages');
+    const chatInput = document.getElementById('chatInput');
+    const sendBtn = document.getElementById('sendBtn');
+    const typingIndicator = document.getElementById('typingIndicator');
+    const voiceToggle = document.getElementById('voiceToggle');
+    const avatarLabel = document.getElementById('avatarLabel');
+
+    // ========== STATE ==========
+    let chatHistory = [];
+    let currentPassageIndex = 0;
+    let currentParagraphs = [];
+
+    // ========== HELPERS ==========
+
+    function addMessage(content, type = 'bot') {
+      // Remove welcome message if present
+      const welcome = chatMessages.querySelector('.welcome-message');
+      if (welcome) welcome.remove();
+
+      const msg = document.createElement('div');
+      msg.className = `message ${type}`;
+
+      if (type === 'bot') {
+        const rotation = (Math.random() - 0.5) * 0.8;
+        msg.style.transform = `rotate(${rotation}deg)`;
+
+        msg.innerHTML = `
+          <div class="text">${content}</div>
+          <div class="signature">-- K.V.</div>
+        `;
+      } else {
+        msg.textContent = content;
+      }
+
+      chatMessages.appendChild(msg);
+      chatMessages.scrollTop = chatMessages.scrollHeight;
+
+      // Update history
+      chatHistory.push({ type, content });
+    }
+
+    function setTyping(visible) {
+      typingIndicator.classList.toggle('visible', visible);
+      if (visible) {
+        avatarLabel.textContent = 'Kurt is thinking...';
+      } else {
+        avatarLabel.textContent = 'Kurt is listening...';
+      }
+    }
+
+    function getCurrentContext() {
+      // Get the currently highlighted passage
+      const highlighted = bookContent.querySelector('.current-passage');
+      if (highlighted) {
+        return highlighted.textContent;
+      }
+      // Fallback to first few paragraphs
+      const paragraphs = bookContent.querySelectorAll('p');
+      let context = '';
+      for (let i = 0; i < Math.min(3, paragraphs.length); i++) {
+        context += paragraphs[i].textContent + '\n\n';
+      }
+      return context;
+    }
+
+    function renderBookContent(paragraphs) {
+      currentParagraphs = paragraphs;
+
+      if (!paragraphs || paragraphs.length === 0) {
+        bookContent.innerHTML = `
+          <div class="empty-state">
+            <div class="empty-state-icon">*</div>
+            <div class="empty-state-text">Select a text above to begin reading with Kurt.</div>
+          </div>
+        `;
+        return;
+      }
+
+      // Get title from first paragraph if it looks like a title
+      let title = '';
+      let startIndex = 0;
+      if (paragraphs[0].length < 100 && !paragraphs[0].includes('.')) {
+        title = paragraphs[0];
+        startIndex = 1;
+      }
+
+      let html = '';
+      if (title) {
+        html += `<div class="chapter-title">${title}</div>`;
+      }
+      html += '<div class="book-text">';
+
+      for (let i = startIndex; i < paragraphs.length; i++) {
+        const isCurrentPassage = i === currentPassageIndex + startIndex;
+        html += `<p class="${isCurrentPassage ? 'current-passage' : ''}">${paragraphs[i]}</p>`;
+      }
+
+      html += '</div>';
+      bookContent.innerHTML = html;
+
+      // Add click handlers to paragraphs for manual selection
+      const pElements = bookContent.querySelectorAll('p');
+      pElements.forEach((p, idx) => {
+        p.style.cursor = 'pointer';
+        p.addEventListener('click', () => {
+          pElements.forEach(el => el.classList.remove('current-passage'));
+          p.classList.add('current-passage');
+          currentPassageIndex = idx;
+        });
+      });
+    }
+
+    async function loadText(textName) {
+      if (!textName) {
+        renderBookContent([]);
+        return;
+      }
+
+      try {
+        const response = await fetch(`/api/text/${encodeURIComponent(textName)}`);
+        const data = await response.json();
+
+        if (data.error) {
+          console.error(data.error);
+          return;
+        }
+
+        renderBookContent(data.paragraphs);
+      } catch (err) {
+        console.error('Error loading text:', err);
+      }
+    }
+
+    async function sendMessage() {
+      const text = chatInput.value.trim();
+      if (!text) return;
+
+      addMessage(text, 'user');
+      chatInput.value = '';
+      sendBtn.disabled = true;
+
+      setTyping(true);
+
+      try {
+        const response = await fetch('/api/chat', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            message: text,
+            context: getCurrentContext(),
+            history: chatHistory.slice(-12)
+          })
+        });
+
+        const data = await response.json();
+        setTyping(false);
+
+        if (data.response) {
+          addMessage(data.response, 'bot');
+        }
+      } catch (err) {
+        setTyping(false);
+        addMessage('I seem to be having trouble. So it goes.', 'bot');
+        console.error('Chat error:', err);
+      }
+
+      sendBtn.disabled = false;
+    }
+
+    // ========== EVENT LISTENERS ==========
+
+    bookSelect.addEventListener('change', () => {
+      loadText(bookSelect.value);
+    });
+
+    sendBtn.addEventListener('click', sendMessage);
+
+    chatInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        sendMessage();
+      }
+    });
+
+    voiceToggle.addEventListener('click', () => {
+      // Voice mode coming soon
+      alert('Voice mode is coming soon. So it goes.');
+    });
+
+    // ========== SCROLL TRACKING ==========
+    const pageContainer = document.querySelector('.page-container');
+    if (pageContainer) {
+      pageContainer.addEventListener('scroll', () => {
+        // Find which paragraph is most visible
+        const paragraphs = bookContent.querySelectorAll('.book-text p');
+        const containerRect = pageContainer.getBoundingClientRect();
+        const containerCenter = containerRect.top + containerRect.height / 3;
+
+        let closestIdx = 0;
+        let closestDist = Infinity;
+
+        paragraphs.forEach((p, idx) => {
+          const rect = p.getBoundingClientRect();
+          const dist = Math.abs(rect.top - containerCenter);
+          if (dist < closestDist) {
+            closestDist = dist;
+            closestIdx = idx;
+          }
+        });
+
+        if (closestIdx !== currentPassageIndex) {
+          paragraphs.forEach(p => p.classList.remove('current-passage'));
+          if (paragraphs[closestIdx]) {
+            paragraphs[closestIdx].classList.add('current-passage');
+          }
+          currentPassageIndex = closestIdx;
+        }
+      });
+    }
+  </script>
+</body>
+</html>

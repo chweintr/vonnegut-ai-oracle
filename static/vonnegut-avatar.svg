@@ -1,0 +1,74 @@
+<svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+  <!-- Vonnegut line drawing style avatar -->
+  <style>
+    .line {
+      fill: none;
+      stroke: #2a2520;
+      stroke-width: 2;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+    .thin { stroke-width: 1.5; }
+    .hair { stroke-width: 1.2; }
+  </style>
+
+  <!-- Face outline - slightly asymmetric for hand-drawn feel -->
+  <path class="line" d="M70 95
+    Q65 75, 75 55
+    Q85 35, 100 32
+    Q115 35, 125 55
+    Q135 75, 130 95
+    Q132 120, 125 140
+    Q115 160, 100 165
+    Q85 160, 75 140
+    Q68 120, 70 95" />
+
+  <!-- Messy curly hair -->
+  <g class="hair">
+    <path class="line" d="M72 55 Q65 45, 70 35 Q78 28, 85 32" />
+    <path class="line" d="M80 38 Q75 28, 82 22 Q92 18, 98 25" />
+    <path class="line" d="M95 25 Q100 15, 110 18 Q118 22, 115 32" />
+    <path class="line" d="M112 28 Q120 20, 128 28 Q132 38, 125 45" />
+    <path class="line" d="M128 40 Q138 35, 135 50 Q130 58, 125 55" />
+    <path class="line" d="M68 60 Q58 55, 62 45 Q68 38, 75 42" />
+    <path class="line" d="M88 30 Q85 20, 92 18" />
+    <path class="line" d="M105 22 Q108 15, 115 20" />
+  </g>
+
+  <!-- Eyebrows - expressive, slightly raised -->
+  <path class="line thin" d="M78 72 Q85 68, 92 71" />
+  <path class="line thin" d="M108 71 Q115 68, 122 72" />
+
+  <!-- Eyes - tired, knowing -->
+  <ellipse class="line thin" cx="85" cy="82" rx="8" ry="5" />
+  <ellipse class="line thin" cx="115" cy="82" rx="8" ry="5" />
+  <circle cx="85" cy="82" r="2" fill="#2a2520" />
+  <circle cx="115" cy="82" r="2" fill="#2a2520" />
+
+  <!-- Bags under eyes - lived-in face -->
+  <path class="line thin" d="M78 88 Q85 92, 92 88" style="opacity: 0.5" />
+  <path class="line thin" d="M108 88 Q115 92, 122 88" style="opacity: 0.5" />
+
+  <!-- Nose - prominent -->
+  <path class="line" d="M100 78 L100 100 Q95 108, 100 110 Q105 108, 105 105" />
+
+  <!-- Mustache - the signature -->
+  <path class="line" d="M82 118 Q85 115, 92 117 Q100 120, 108 117 Q115 115, 118 118" />
+  <path class="line thin" d="M85 118 Q90 122, 100 120 Q110 122, 115 118" />
+
+  <!-- Mouth - slight wry smile under mustache -->
+  <path class="line thin" d="M90 128 Q100 132, 110 128" />
+
+  <!-- Wrinkles/character lines -->
+  <path class="line thin" d="M65 95 Q68 100, 65 105" style="opacity: 0.4" />
+  <path class="line thin" d="M135 95 Q132 100, 135 105" style="opacity: 0.4" />
+
+  <!-- Ears -->
+  <path class="line thin" d="M68 85 Q60 85, 62 95 Q64 105, 70 102" />
+  <path class="line thin" d="M132 85 Q140 85, 138 95 Q136 105, 130 102" />
+
+  <!-- Neck/collar suggestion -->
+  <path class="line thin" d="M85 165 L80 185" />
+  <path class="line thin" d="M115 165 L120 185" />
+  <path class="line thin" d="M80 180 Q100 175, 120 180" />
+</svg>
