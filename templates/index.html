@@ -259,6 +259,8 @@
       flex-direction: column;
       align-items: center;
       gap: 1rem;
+      flex-shrink: 0; /* Prevent cropping */
+      padding-bottom: 0.5rem;
     }
 
     .avatar-container {
@@ -291,6 +293,56 @@
       height: 100%;
       border: none;
       object-fit: cover;
+    }
+
+    /* Simli widget styling - fit in circle and hide native controls */
+    .avatar-container simli-widget {
+      width: 100% !important;
+      height: 100% !important;
+      border-radius: 50%;
+      overflow: hidden;
+    }
+
+    /* Hide Simli's native start/end buttons */
+    .avatar-container simli-widget::part(start-button),
+    .avatar-container simli-widget::part(end-button),
+    .avatar-container simli-widget button {
+      display: none !important;
+    }
+
+    /* Scale up the video inside Simli to fill the circle better */
+    .avatar-container simli-widget video {
+      width: 140% !important;
+      height: 140% !important;
+      object-fit: cover;
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+    }
+
+    /* Simli mount point styling */
+    #simliMount {
+      width: 100%;
+      height: 100%;
+      border-radius: 50%;
+      overflow: hidden;
+      position: relative;
+      background: var(--ink); /* Dark background instead of black */
+    }
+
+    /* Force clip any overflowing Simli content */
+    #simliMount * {
+      border-radius: 50%;
+    }
+
+    /* Target any buttons inside Simli (works if not in closed shadow DOM) */
+    #simliMount button,
+    #simliMount [role="button"] {
+      opacity: 0 !important;
+      pointer-events: none !important;
+      position: absolute !important;
+      z-index: -1 !important;
     }
 
     /* Breathing animation behind avatar - only for SVG */
@@ -1284,10 +1336,35 @@
           simliMount.style.display = 'block';
           simliMount.appendChild(simliWidget);
 
+          // Try to auto-click Simli's start button (may be in shadow DOM)
+          const tryClickStart = () => {
+            // Try direct child
+            let startBtn = simliWidget.querySelector('button');
+
+            // Try shadow DOM if available
+            if (!startBtn && simliWidget.shadowRoot) {
+              startBtn = simliWidget.shadowRoot.querySelector('button');
+            }
+
+            if (startBtn) {
+              startBtn.click();
+              // Also try to hide it after clicking
+              startBtn.style.display = 'none';
+              return true;
+            }
+            return false;
+          };
+
+          // Try immediately, then with delays
           setTimeout(() => {
-            const startBtn = simliWidget.querySelector('button');
-            if (startBtn) startBtn.click();
-          }, 500);
+            if (!tryClickStart()) {
+              setTimeout(() => {
+                if (!tryClickStart()) {
+                  setTimeout(tryClickStart, 1000);
+                }
+              }, 500);
+            }
+          }, 300);
 
           avatarLabel.textContent = 'Speaking with Kurt...';
 
