@@ -8,6 +8,12 @@ The system pairs a reading interface with retrieval-augmented generation. Every 
 
 ---
 
+## The Problem This Project Addresses
+
+Annotation tools summarize themes. They do not explain why Vonnegut wrote a line the way he did, what he was thinking, or what shaped the choice. Readers bounce between PDFs, notes, and websites trying to piece together context. They get surface reading and little sense of the writer's mind.
+
+---
+
 ## Core Design Principles
 
 ### 1. Reading Companion, Not Answer Machine (or Quiz Master)
@@ -46,17 +52,17 @@ Responses can pull from a corpus of Vonnegut's interviews, letters, essays, and 
 
 ---
 
-## Two Modes: Chat vs. Voice
+## Two Modes: Text vs. Talk
 
 The system behaves differently depending on interaction mode, primarily for **latency reasons**:
 
-### Chat Mode (Text)
+### Text Mode (Chat)
 - **Deeper RAG access**: Can search full corpus, return longer excerpts
-- **Richer responses**: Can include drawings, formatted text, longer quotes
-- **Drawing mode**: Occasionally returns simple line drawings instead of text (very on-brand—Vonnegut doodled constantly)
+- **Richer responses**: Can include doodles, formatted text, longer quotes
+- **Doodle responses**: Occasionally returns simple line drawings instead of text (very on-brand—Vonnegut doodled constantly)
 - **No latency pressure**: User is reading, not waiting for speech
 
-### Voice Mode (Avatar)
+### Talk Mode (Voice + Avatar)
 - **Lighter RAG**: Top 1-2 passages only, shorter excerpts
 - **Concise responses**: 1-3 sentences, conversational
 - **Faster pipeline**: Prioritize responsiveness over depth
@@ -66,84 +72,110 @@ The system behaves differently depending on interaction mode, primarily for **la
 
 ---
 
+## Doodle System (Implemented)
+
+Vonnegut was a prolific doodler. The bot occasionally responds with simple line drawings instead of text.
+
+### How It Works
+- Trigger words in user messages (e.g., "bird," "death," "who are you") have a random chance of returning a doodle
+- Each doodle has its own trigger words and probability (10-20% chance when triggered)
+- Doodles are SVG files in Vonnegut's sketchy line-drawing style
+
+### Current Doodles
+| Doodle | Triggers | Caption |
+|--------|----------|---------|
+| Bird on wire | bird, favorite animal, fly | "Poo-tee-weet?" |
+| Gravestone | death, dying, so it goes | (none) |
+| Asterisk person | who are you, draw yourself | "Here I am." |
+| "So it goes" | so it goes, tralfamadore | (none) |
+| Self-portrait | vonnegut, look like, portrait | "That's me. More or less." |
+| Waving hand | hello, hi, greetings | "Hello there." |
+
+### Implementation
+- `static/doodles/manifest.json` defines triggers and probabilities
+- `app.py:check_for_doodle()` checks messages against triggers
+- Frontend renders doodles with optional captions and K.V.*bot signature
+
+---
+
 ## Interface Design
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
-│                         VONNEBOT                                 │
-│           A Kurt Vonnegut Inspired Reading Companion            │
+│                         VONNEBOT *                               │
+│                    And so it reads...                            │
 ├────────────────────────────────┬────────────────────────────────┤
 │                                │     ┌──────────────┐           │
-│     📖 READING PANE            │     │   🎭 Avatar  │           │
-│     (scrollable)               │     │   (Simli)    │           │
+│     📖 READING PANE            │     │   Avatar     │           │
+│     (scrollable)               │     │   (circle)   │           │
 │                                │     └──────────────┘           │
-│     - Library texts            │                                │
-│     - Upload your own          │     💬 CHAT                    │
-│     - PDF support (future)     │     (scrollable)               │
-│                                │                                │
-│     Bot sees this              │     - Conversation thread      │
-│     automatically              │     - Or marginalia view       │
-│                                │                                │
+│     - Library texts            │     [Text] [Talk] toggle       │
+│     - Current passage gold     │                                │
+│                                │     💬 CHAT                    │
+│     Bot sees this              │     (scrollable)               │
+│     automatically              │                                │
+│                                │     - Conversation thread      │
+│                                │     - K.V.*bot signature       │
+│                                │     - Occasional doodles       │
 └────────────────────────────────┴────────────────────────────────┘
 ```
 
 ### Reading Pane (Left)
 - Scrollable text display
-- Select from library (public domain Vonnegut) or upload your own
+- Select from library (public domain Vonnegut)
 - Current passage highlighted with gold border
-- Future: PDF rendering, epub support
-- Auto-context: bot knows what's in viewport
+- Click any paragraph to set as current context
+- Auto-scroll tracking updates context as you read
 
 ### Avatar (Top Right)
-- Idle: Looping video of Vonnegut-style illustration (blinking, subtle movement)
-- Active: Simli-powered talking avatar via LiveKit
+- **Idle**: Looping video of Vonnegut illustration (blinking, subtle movement)
+- **Talk mode**: Simli-powered talking avatar
 - Design: Line drawing style matching Vonnegut's own illustrations
-- Future: Avatar appears to read with you (eyes moving, nods, reactions)
+- Circular frame with pencil-stroke border
 
 ### Chat (Bottom Right)
 - Scrollable conversation thread
-- Bot messages signed "— K.V." with slight rotation (handwritten feel)
-- Alternative: **Marginalia view** (annotations alongside text, like a used book)
-- Input field + send button
+- Bot messages signed "— K.V.*bot" with animated typewriter effect
+- Slight rotation on messages (handwritten feel)
+- Doodles appear inline when triggered
+- Collapsible disclaimer at bottom
 
 ---
 
-## Feature Ideas
+## Feature Status
 
 ### Implemented ✓
 - [x] Automatic passage awareness (sends visible text as context)
 - [x] Four conversational moods (Questioner, Riff, Storyteller, Fellow Reader)
 - [x] Vonnegut persona with biographical accuracy
-- [x] Public domain text library
-- [x] Upload your own text
-- [x] Disclaimer and proper framing
+- [x] Public domain text library (2BR02B, Harrison Bergeron, Big Trip Up Yonder)
+- [x] Disclaimer and proper framing ("not affiliated with estate")
 - [x] Typewriter-style typography (Special Elite, Libre Baskerville, Caveat)
-- [x] Idle video loop avatar
-- [x] Simli widget integration (basic voice mode)
+- [x] Idle video loop avatar (blinking Vonnegut)
+- [x] Simli widget integration (Talk mode)
+- [x] **Doodle responses** (6 SVG doodles with trigger system)
+- [x] **K.V.*bot signature** with animated typewriter effect
+- [x] **Text/Talk mode toggle**
+- [x] **Streaming chat endpoint** (SSE for real-time responses)
+- [x] **ElevenLabs TTS endpoint** (for future text+voice mode)
 
 ### Near-term
 - [ ] **Marginalia view**: Chat appears as marginal notes alongside text
-- [ ] **"So it goes" moments**: When text mentions death, bot acknowledges it in Vonnegut's understated way
-- [ ] **Scroll position tracking**: More precise "what are you reading" detection
-- [ ] **Annotation layer**: Highlight, bookmark, save exchanges about specific passages
-- [ ] **Drawing mode**: Bot occasionally returns simple asterisk doodles or line drawings
+- [ ] **"So it goes" moments**: When text mentions death, bot acknowledges automatically
+- [ ] **More precise scroll tracking**: Viewport detection for exact passage
+- [ ] **Full LiveKit integration**: RAG + reading context in voice mode
 
 ### Medium-term
-- [ ] **Kilgore Trout mode**: Bot speaks as Vonnegut's recurring character—weirder, more speculative, sci-fi tangents
-- [ ] **Text-specific personality**: Shift tone based on which book:
-  - Slaughterhouse-Five = fragmented, time-jumping
-  - Breakfast of Champions = manic, meta, fourth-wall breaking
-  - Cat's Cradle = cold, ironic, Bokononist
-  - God Bless You, Mr. Rosewater = warmer, more hopeful
-- [ ] **Time unstuck**: For Slaughterhouse-Five, bot occasionally jumps to different passages unprompted ("Billy Pilgrim has come unstuck in time, and so have I")
-- [ ] **Full LiveKit integration**: Backend RAG + reading context in voice mode
+- [ ] **Kilgore Trout mode**: Bot speaks as Vonnegut's recurring character
+- [ ] **Text-specific personality**: Shift tone based on which book
+- [ ] **Time unstuck**: For Slaughterhouse-Five, bot jumps to different passages
+- [ ] **User profiles**: Adjust vocabulary/depth based on declared level
 
 ### Long-term
-- [ ] **Writing teacher mode**: Users write their own interpretations, bot engages as Iowa Workshop instructor
+- [ ] **Writing teacher mode**: Iowa Workshop instructor persona
 - [ ] **PDF support**: Read alongside any PDF
 - [ ] **AR glasses version**: Overlay annotations on physical books
 - [ ] **Multi-user collaboration**: Book clubs see shared annotations
-- [ ] **Adaptive profiling**: Bot adjusts vocabulary/depth based on user level
 
 ---
 
@@ -179,6 +211,53 @@ A Man Without a Country era, grumpy but tender:
 
 ---
 
+## Text-Specific Personality (Future)
+
+When reading different books, the bot could shift tone:
+
+| Book | Personality |
+|------|-------------|
+| Slaughterhouse-Five | Fragmented, time-jumping, occasionally says "unstuck in time" |
+| Breakfast of Champions | Manic, meta, fourth-wall breaking, describes things literally |
+| Cat's Cradle | Cold, ironic, Bokononist aphorisms |
+| God Bless You, Mr. Rosewater | Warmer, more hopeful, focused on kindness |
+| Player Piano | More technical, anxious about automation |
+
+---
+
+## Adaptive User Profiling (Future)
+
+Different readers need different approaches.
+
+### Profile Categories
+- **General Reader** — casual interest, broad cultural literacy
+- **High School Student** — age-appropriate language, foundational context
+- **Undergraduate** — discipline-specific framing (English vs. history major)
+- **Graduate/Scholar** — technical vocabulary, theoretical frameworks
+- **Creative Writer** — craft-focused analysis, technique discussion
+- **Educator** — pedagogical framing, classroom application ideas
+
+### Demographic Refinements
+- **Geographic/Regional**: Location, dialect awareness, cultural reference pools
+- **Disciplinary Background**: Field of study, reading experience level, purpose
+- **Learning Preferences**: Historical context vs. close reading vs. biographical
+- **Language & Accessibility**: ESL adjustments, reading speed, screen reader support
+
+### How It Adapts
+- **Analogy selection**: High schooler gets Friday Night Lights references, scholar gets Genette's Narrative Discourse
+- **Depth calibration**: Writer gets compression/subtext discussion, student gets "how characters reveal themselves"
+- **Tone**: Graduate gets dry precision, general reader gets conversational warmth
+- **Nudging intensity**: Beginner gets more hints, expert gets more pushback
+- **Cultural references**: Reader in India gets partition literature connections, rural US gets Vietnam memorial references
+
+### Implementation Path
+1. **v1 (current)**: Per-session, no profiling
+2. **v1.5**: User declares profile at start ("Who are you reading as today?")
+3. **v2**: System refines based on interaction patterns
+4. **v3**: Persistent profiles across sessions (requires auth + FERPA/GDPR compliance)
+
+---
+
 ## Latency & Performance
 
 ### The Voice Pipeline
@@ -202,7 +281,7 @@ Each step adds latency:
 | ElevenLabs "turbo" model | 200-400ms | Slightly lower quality |
 | GPT-4o-mini for voice | 300-500ms | Less nuanced |
 | Streaming TTS | 200-400ms | More complex |
-| Tiered RAG (see below) | Variable | Complexity |
+| Cache common queries | 20-30% savings | Stale responses |
 
 ### Tiered Corpus Strategy
 
@@ -227,10 +306,7 @@ Full corpus, only searched when:
 
 ---
 
-## Avatar Design Considerations
-
-### The Question
-Should the avatar look like Vonnegut, or something more abstract?
+## Avatar Design
 
 ### Current Approach
 Line drawing style matching Vonnegut's own illustrations:
@@ -242,7 +318,8 @@ Line drawing style matching Vonnegut's own illustrations:
 ### Avatar Behavior
 **Current:**
 - Idle loop video (blinking, subtle movement)
-- Simli widget activates on voice mode
+- Simli widget activates on Talk mode
+- Circular frame clips avatar nicely
 
 **Future:**
 - Appears to read with you (eyes moving across text)
@@ -255,55 +332,69 @@ Line drawing style matching Vonnegut's own illustrations:
 ## Technical Architecture
 
 ### Current Stack
-- **Frontend**: Flask + Jinja2 templates (beautiful typewriter styling)
+- **Frontend**: Flask + Jinja2 templates (typewriter styling)
 - **LLM**: OpenAI GPT-4o
 - **Persona**: `prompts_base_prompt.txt` (biographical accuracy + moods)
 - **Corpus**: `data/vonnegut_corpus/` (public domain + fair use excerpts)
 - **RAG**: `knowledge_base.py` + `data/corpus_index.jsonl`
 - **Avatar**: Simli widget (current), LiveKit + Simli (planned)
-- **Voice**: ElevenLabs TTS
+- **Voice**: ElevenLabs TTS (eleven_turbo_v2 model)
+- **Doodles**: SVG files + manifest.json trigger system
 
 ### Key Files
 | File | Purpose |
 |------|---------|
-| `app.py` | Flask backend |
-| `templates/index.html` | Main UI (typewriter styling) |
+| `app.py` | Flask backend, chat endpoints, Simli token, TTS |
+| `templates/index.html` | Main UI (typewriter styling, mode toggle) |
 | `prompts_base_prompt.txt` | Vonnegut persona + moods |
 | `vonnebot_agent.py` | LiveKit agent for full voice integration |
 | `knowledge_base.py` | RAG retrieval |
 | `static/vonnegut_blinking.mp4` | Idle avatar video |
+| `static/doodles/manifest.json` | Doodle triggers and metadata |
+| `static/doodles/*.svg` | SVG doodle files |
+
+### API Endpoints
+| Endpoint | Method | Purpose |
+|----------|--------|---------|
+| `/` | GET | Main page |
+| `/api/texts` | GET | List available texts |
+| `/api/text/<name>` | GET | Get text content |
+| `/api/chat` | POST | Regular chat (non-streaming) |
+| `/api/chat-stream` | POST | Streaming chat (SSE) |
+| `/api/simli-token` | POST | Get Simli session token |
+| `/api/tts` | POST | ElevenLabs text-to-speech |
 
 ### Deployment
-- **Frontend**: Railway (lovely-nurturing-production)
-- **Agent Backend**: Railway (vonnegut-ai-oracle) — for full LiveKit integration
+- **Frontend**: Railway (lovely-nurturing-production.up.railway.app)
 - **LiveKit**: LiveKit Cloud (WebRTC infrastructure)
-- **Simli**: Avatar rendering
+- **Simli**: Avatar rendering via widget
 
 ---
 
-## Adaptive User Profiling (Future)
+## Recommended Future Expansions
 
-Different readers need different approaches:
+### AR Glasses Version
+Overlay contextual annotations while reading physical books:
+- Track eye movement and dwell time to identify confusion points
+- Gaze-triggered queries: stare at passage for 3+ seconds, prompt appears
+- Ambient mode: pre-load relevant context for visible paragraph
+- Live discussion support: book clubs see shared annotations
 
-### Profile Categories
-- General Reader — casual interest
-- High School Student — age-appropriate language
-- Undergraduate — discipline-specific framing
-- Graduate/Scholar — technical vocabulary
-- Creative Writer — craft-focused analysis
-- Educator — pedagogical framing
+### Dashboard for Educators
+- See which passages students query most often
+- Identify common misconceptions
+- Create guided reading paths with pre-loaded questions
+- Review transcripts to assess engagement depth
 
-### How It Adapts
-- **Analogy selection**: High schooler gets Friday Night Lights references, scholar gets Genette's Narrative Discourse
-- **Depth calibration**: Writer gets compression/subtext discussion, student gets "how characters reveal themselves"
-- **Tone**: Graduate gets dry precision, general reader gets conversational warmth
-- **Nudging intensity**: Beginner gets more hints, expert gets more pushback
+### Multi-User Collaboration
+- Multiple users read the same passage
+- System aggregates questions, identifies common threads
+- Users see each other's annotations (privacy-controlled)
 
-### Implementation Path
-1. v1 (current): Per-session, no profiling
-2. v1.5: User declares profile at start
-3. v2: System refines based on interaction patterns
-4. v3: Persistent profiles across sessions
+### Longitudinal Learning Profiles
+- Track reading history, question patterns, growth indicators
+- Remember past exchanges across sessions
+- Identify strengths and gaps, suggest topics to explore
 
 ---
 
@@ -315,9 +406,16 @@ Different readers need different approaches:
 - Private deployment only
 
 ### Future Licensing Goals
-- License limited snippets from Vonnegut estate/publishers
+- License limited snippets (500-1,000 words from 10-15 works) from estate/publishers
 - Controlled research pilot with audit logs
 - Revenue share or flat fee model at scale
+- Pilot estimate: $2,500-$5,000 one-time licensing fee
+
+### Data Governance
+- Clear consent forms for users
+- Anonymization protocols for aggregate analysis
+- Right to delete personal data
+- Transparent logging: users can download interaction history
 
 ---
 
@@ -327,14 +425,14 @@ Different readers need different approaches:
 - Comprehension gains (pre/post tests)
 - Engagement duration vs. traditional study aids
 - Question depth (factual vs. interpretive)
-- Retention (follow-up assessment)
+- Retention (follow-up assessment 2-4 weeks later)
 - Qualitative feedback
 - Nudge effectiveness (did users engage more deeply?)
 
 ### Study Design
 - Control group: standard study guides
 - Treatment group: Vonnebot
-- Cross-demographic cohorts
+- Cross-demographic cohorts (high school, undergrad, general readers)
 - Target: 200-300 users for statistical validity
 
 ---
@@ -346,8 +444,14 @@ Different readers need different approaches:
 | Pilot (6mo, 200 users) | $15,375 | $150 | $2,500 | $300 | $18,325 |
 | Scaled Year 1 (10k users) | $30,000 | $11,250 | $10,000 | $6,000 | $57,250 |
 | Steady State (Year 2+) | — | $11,250 | $10,000 | $6,000 | $27,250 |
+| AR Prototype | $9,750 | $400 | — | $6,000 | $16,150 |
 
 Per-user cost at scale: ~$5.73 (Year 1), ~$2.73 (steady state)
+
+### Per-Session API Costs
+- Text-only mode: ~$0.165 (OpenAI)
+- Voice mode: ~$0.185 (OpenAI + TTS)
+- Full avatar mode: ~$0.435 (OpenAI + TTS + Simli)
 
 ---
 
@@ -355,10 +459,9 @@ Per-user cost at scale: ~$5.73 (Year 1), ~$2.73 (steady state)
 
 1. **Simli system prompt limits**: How much can we stuff before latency degrades?
 2. **Kilgore Trout mode**: How prominent? Toggle or emergent?
-3. **Drawing mode**: How often? What triggers it?
-4. **Estate engagement**: When and how to approach?
-5. **LiveKit complexity**: Worth it for RAG in voice, or accept limitations?
-6. **ElevenLabs model**: Turbo vs. standard? Latency vs. quality?
+3. **Estate engagement**: When and how to approach?
+4. **LiveKit complexity**: Worth it for RAG in voice, or accept limitations?
+5. **Profile persistence**: Build auth system or keep per-session?
 
 ---
 
@@ -372,14 +475,19 @@ Per-user cost at scale: ~$5.73 (Year 1), ~$2.73 (steady state)
 - Text chat with Vonnegut persona
 - Four conversational moods
 - Idle video avatar (blinking Vonnegut)
-- Simli widget for basic voice mode
+- Simli widget for Talk mode
+- Doodle responses with trigger system
+- K.V.*bot animated signature
+- Text/Talk mode toggle
+- Streaming chat endpoint
+- ElevenLabs TTS endpoint
 
 **In progress:**
 - Full LiveKit + Simli integration (RAG in voice mode)
 - Reading context awareness in voice mode
 
 **Next priorities:**
-1. Test Simli widget latency
+1. Test Simli widget with real conversations
 2. Curate Tier 2 corpus (50 best passages)
 3. Optimize system prompt for voice
 4. Deploy LiveKit agent backend
