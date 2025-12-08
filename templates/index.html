@@ -790,13 +790,10 @@
 
         <!-- Mode Toggle -->
         <div class="mode-toggle" id="modeToggle">
-          <button class="mode-btn active" data-mode="text" title="Text only (fast)">
+          <button class="mode-btn active" data-mode="text" title="Type to chat (fast)">
             <span>&#9998;</span> Text
           </button>
-          <button class="mode-btn" data-mode="text-voice" title="Text + Voice (hear Kurt read)">
-            <span>&#9834;</span> Text + Voice
-          </button>
-          <button class="mode-btn" data-mode="talk" title="Talk to Kurt (Simli avatar)">
+          <button class="mode-btn" data-mode="talk" title="Voice conversation with Kurt">
             <span>&#9786;</span> Talk
           </button>
         </div>
@@ -1241,17 +1238,11 @@
     });
 
     // Mode toggle buttons
-    console.log('Setting up mode toggle, element:', modeToggle);
     modeToggle.addEventListener('click', async (e) => {
-      console.log('Mode toggle clicked', e.target);
       const btn = e.target.closest('.mode-btn');
-      if (!btn) {
-        console.log('No button found');
-        return;
-      }
+      if (!btn) return;
 
       const newMode = btn.dataset.mode;
-      console.log('New mode:', newMode, 'Current mode:', currentMode);
       if (newMode === currentMode) return;
 
       // Update button states
