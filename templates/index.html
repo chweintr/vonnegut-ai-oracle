@@ -1241,11 +1241,17 @@
     });
 
     // Mode toggle buttons
+    console.log('Setting up mode toggle, element:', modeToggle);
     modeToggle.addEventListener('click', async (e) => {
+      console.log('Mode toggle clicked', e.target);
       const btn = e.target.closest('.mode-btn');
-      if (!btn) return;
+      if (!btn) {
+        console.log('No button found');
+        return;
+      }
 
       const newMode = btn.dataset.mode;
+      console.log('New mode:', newMode, 'Current mode:', currentMode);
       if (newMode === currentMode) return;
 
       // Update button states
