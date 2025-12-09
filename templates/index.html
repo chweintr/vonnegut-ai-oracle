@@ -291,7 +291,7 @@
       height: 200px;
     }
 
-    /* Simli layer - ONLY visible when connected, clips to circle */
+    /* Simli layer - ONLY visible when connected */
     #simliLayer {
       position: absolute;
       top: 0;
@@ -308,21 +308,19 @@
       display: block;
     }
 
-    /* Force Simli widget to be larger so face fills the circle when clipped */
+    /*
+     * SCALE TRANSFORM APPROACH:
+     * Simli widget renders at ~500px. We scale it down to fit 200px.
+     * Scale factor: 200/500 = 0.4
+     * We position it so the face (center of widget) aligns with our circle center.
+     */
     #simliLayer simli-widget {
-      width: 350px !important;
-      height: 350px !important;
       position: absolute !important;
-      top: 50% !important;
-      left: 50% !important;
-      transform: translate(-50%, -50%) !important;
-    }
-
-    /* Hide Simli's native UI chrome */
-    #simliLayer simli-widget button,
-    #simliLayer simli-widget [class*="button"],
-    #simliLayer simli-widget [class*="Button"] {
-      display: none !important;
+      top: 0 !important;
+      left: 0 !important;
+      transform-origin: top left !important;
+      transform: scale(0.4) !important;
+      /* Widget is ~500px, so scaled = 200px */
     }
 
     /* Our invisible button overlay - passes clicks through to Simli beneath */
