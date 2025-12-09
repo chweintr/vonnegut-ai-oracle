@@ -1407,6 +1407,68 @@
             return clicked;
           };
 
+          // Debug function to inspect what Simli creates
+          const debugSimli = () => {
+            console.log('=== SIMLI DEBUG ===');
+            console.log('simliWidget element:', simliWidget);
+            console.log('simliWidget outerHTML:', simliWidget.outerHTML);
+            console.log('simliWidget computed style:', {
+              width: getComputedStyle(simliWidget).width,
+              height: getComputedStyle(simliWidget).height,
+              display: getComputedStyle(simliWidget).display,
+              position: getComputedStyle(simliWidget).position
+            });
+            console.log('simliWidget children:', simliWidget.children);
+            console.log('simliWidget innerHTML length:', simliWidget.innerHTML.length);
+
+            // Check for shadow DOM
+            if (simliWidget.shadowRoot) {
+              console.log('HAS SHADOW DOM');
+              console.log('shadowRoot innerHTML:', simliWidget.shadowRoot.innerHTML);
+            } else {
+              console.log('NO shadow DOM (or closed)');
+            }
+
+            // Find all elements inside
+            const allElements = simliWidget.querySelectorAll('*');
+            console.log('All child elements:', allElements.length);
+            allElements.forEach((el, i) => {
+              console.log(`  [${i}] ${el.tagName}`, el.className, {
+                w: getComputedStyle(el).width,
+                h: getComputedStyle(el).height
+              });
+            });
+
+            // Find buttons
+            const buttons = simliWidget.querySelectorAll('button');
+            console.log('Buttons found:', buttons.length);
+            buttons.forEach((btn, i) => {
+              console.log(`  Button ${i}:`, btn.textContent, btn);
+            });
+
+            // Find videos
+            const videos = simliWidget.querySelectorAll('video');
+            console.log('Videos found:', videos.length);
+
+            // Find iframes
+            const iframes = simliWidget.querySelectorAll('iframe');
+            console.log('Iframes found:', iframes.length);
+
+            // Check simliMount
+            console.log('simliMount computed:', {
+              width: getComputedStyle(simliMount).width,
+              height: getComputedStyle(simliMount).height,
+              overflow: getComputedStyle(simliMount).overflow
+            });
+
+            console.log('=== END DEBUG ===');
+          };
+
+          // Run debug at intervals to catch when Simli finishes loading
+          setTimeout(debugSimli, 500);
+          setTimeout(debugSimli, 1500);
+          setTimeout(debugSimli, 3000);
+
           // Try multiple times with increasing delays
           setTimeout(() => tryClickStart(), 200);
           setTimeout(() => tryClickStart(), 500);
