@@ -266,19 +266,32 @@
     .avatar-container {
       width: 180px;
       height: 180px;
+      min-width: 180px;
+      min-height: 180px;
+      max-width: 200px;
+      max-height: 200px;
       border-radius: 50%;
-      overflow: hidden;
+      overflow: hidden !important;
       border: 2px solid var(--pencil);
       background: var(--cream);
       display: flex;
       align-items: center;
       justify-content: center;
       position: relative;
+      /* Clip everything inside */
+      clip-path: circle(50%);
     }
 
     .avatar-container.has-video {
       width: 200px;
       height: 200px;
+    }
+
+    /* When Simli is active, ensure container stays fixed size */
+    .avatar-container.simli-active {
+      width: 200px !important;
+      height: 200px !important;
+      overflow: hidden !important;
     }
 
     .avatar-container img {
@@ -295,54 +308,76 @@
       object-fit: cover;
     }
 
-    /* Simli widget styling - fit in circle and hide native controls */
-    .avatar-container simli-widget {
-      width: 100% !important;
-      height: 100% !important;
-      border-radius: 50%;
-      overflow: hidden;
+    /* Simli mount point - absolute positioned to fill avatar container */
+    #simliMount {
+      position: absolute !important;
+      top: 0 !important;
+      left: 0 !important;
+      width: 200px !important;
+      height: 200px !important;
+      max-width: 200px !important;
+      max-height: 200px !important;
+      border-radius: 50% !important;
+      overflow: hidden !important;
+      background: var(--ink);
+      z-index: 10;
     }
 
-    /* Hide Simli's native start/end buttons */
-    .avatar-container simli-widget::part(start-button),
-    .avatar-container simli-widget::part(end-button),
+    /* Simli widget - constrain to mount point */
+    #simliMount simli-widget,
+    .avatar-container simli-widget {
+      width: 200px !important;
+      height: 200px !important;
+      max-width: 200px !important;
+      max-height: 200px !important;
+      border-radius: 50% !important;
+      overflow: hidden !important;
+      display: block !important;
+    }
+
+    /* Scale and center video inside Simli */
+    #simliMount video,
+    .avatar-container simli-widget video {
+      width: 300px !important;
+      height: 300px !important;
+      object-fit: cover !important;
+      position: absolute !important;
+      top: 50% !important;
+      left: 50% !important;
+      transform: translate(-50%, -50%) !important;
+      border-radius: 0 !important;
+    }
+
+    /* Hide ALL Simli UI elements (buttons, controls, etc) */
+    #simliMount button,
+    #simliMount [role="button"],
+    #simliMount .simli-button,
+    #simliMount [class*="button"],
+    #simliMount [class*="Button"],
     .avatar-container simli-widget button {
+      display: none !important;
+      opacity: 0 !important;
+      visibility: hidden !important;
+      pointer-events: none !important;
+    }
+
+    /* Hide any Simli overlays or UI chrome */
+    #simliMount > div:not(:first-child),
+    #simliMount [class*="overlay"],
+    #simliMount [class*="controls"] {
       display: none !important;
     }
 
-    /* Scale up the video inside Simli to fill the circle better */
-    .avatar-container simli-widget video {
-      width: 140% !important;
-      height: 140% !important;
-      object-fit: cover;
-      position: absolute;
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%, -50%);
-    }
-
-    /* Simli mount point styling */
-    #simliMount {
-      width: 100%;
-      height: 100%;
-      border-radius: 50%;
-      overflow: hidden;
-      position: relative;
-      background: var(--ink); /* Dark background instead of black */
-    }
-
-    /* Force clip any overflowing Simli content */
-    #simliMount * {
-      border-radius: 50%;
-    }
-
-    /* Target any buttons inside Simli (works if not in closed shadow DOM) */
-    #simliMount button,
-    #simliMount [role="button"] {
-      opacity: 0 !important;
-      pointer-events: none !important;
-      position: absolute !important;
-      z-index: -1 !important;
+    /* If Simli uses an iframe, constrain it too */
+    #simliMount iframe,
+    .avatar-container simli-widget iframe {
+      width: 200px !important;
+      height: 200px !important;
+      max-width: 200px !important;
+      max-height: 200px !important;
+      border: none !important;
+      border-radius: 50% !important;
+      overflow: hidden !important;
     }
 
     /* Breathing animation behind avatar - only for SVG */
@@ -1305,12 +1340,15 @@
       const oldMode = currentMode;
       currentMode = newMode;
 
+      const avatarContainer = document.getElementById('avatarContainer');
+
       // Leaving talk mode - cleanup Simli
       if (oldMode === 'talk' && simliWidget) {
         simliMount.removeChild(simliWidget);
         simliWidget = null;
         simliMount.style.display = 'none';
         idleVideo.style.display = 'block';
+        avatarContainer.classList.remove('simli-active');
       }
 
       // Entering talk mode - setup Simli
@@ -1325,46 +1363,55 @@
             throw new Error(tokenData.error);
           }
 
+          // Add class to container for extra CSS control
+          avatarContainer.classList.add('simli-active');
+
           simliWidget = document.createElement('simli-widget');
           simliWidget.setAttribute('token', tokenData.token);
           simliWidget.setAttribute('agent-id', tokenData.agentId);
           simliWidget.setAttribute('face-id', tokenData.faceId);
-          simliWidget.style.width = '100%';
-          simliWidget.style.height = '100%';
+
+          // Force explicit sizing on the widget element
+          simliWidget.style.cssText = 'width: 200px !important; height: 200px !important; max-width: 200px !important; max-height: 200px !important; overflow: hidden !important; border-radius: 50% !important; display: block !important;';
 
           idleVideo.style.display = 'none';
           simliMount.style.display = 'block';
           simliMount.appendChild(simliWidget);
 
-          // Try to auto-click Simli's start button (may be in shadow DOM)
+          // Try to auto-click Simli's start button and hide all buttons
           const tryClickStart = () => {
-            // Try direct child
-            let startBtn = simliWidget.querySelector('button');
+            // Find all buttons in the widget
+            const buttons = simliWidget.querySelectorAll('button');
+            let clicked = false;
 
-            // Try shadow DOM if available
-            if (!startBtn && simliWidget.shadowRoot) {
-              startBtn = simliWidget.shadowRoot.querySelector('button');
+            buttons.forEach(btn => {
+              if (!clicked) {
+                btn.click();
+                clicked = true;
+              }
+              btn.style.cssText = 'display: none !important; visibility: hidden !important;';
+            });
+
+            // Also try shadow DOM
+            if (simliWidget.shadowRoot) {
+              const shadowBtns = simliWidget.shadowRoot.querySelectorAll('button');
+              shadowBtns.forEach(btn => {
+                if (!clicked) {
+                  btn.click();
+                  clicked = true;
+                }
+                btn.style.cssText = 'display: none !important; visibility: hidden !important;';
+              });
             }
 
-            if (startBtn) {
-              startBtn.click();
-              // Also try to hide it after clicking
-              startBtn.style.display = 'none';
-              return true;
-            }
-            return false;
+            return clicked;
           };
 
-          // Try immediately, then with delays
-          setTimeout(() => {
-            if (!tryClickStart()) {
-              setTimeout(() => {
-                if (!tryClickStart()) {
-                  setTimeout(tryClickStart, 1000);
-                }
-              }, 500);
-            }
-          }, 300);
+          // Try multiple times with increasing delays
+          setTimeout(() => tryClickStart(), 200);
+          setTimeout(() => tryClickStart(), 500);
+          setTimeout(() => tryClickStart(), 1000);
+          setTimeout(() => tryClickStart(), 2000);
 
           avatarLabel.textContent = 'Speaking with Kurt...';
 
