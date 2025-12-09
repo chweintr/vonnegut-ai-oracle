@@ -291,7 +291,7 @@
       height: 200px;
     }
 
-    /* Simli layer - exact same size, sits on top */
+    /* Simli layer - ONLY visible when connected, clips to circle */
     #simliLayer {
       position: absolute;
       top: 0;
@@ -300,18 +300,29 @@
       height: 200px;
       display: none;
       z-index: 5;
+      border-radius: 50%;
+      overflow: hidden;
     }
 
-    #simliLayer.active {
+    #simliLayer.connected {
       display: block;
     }
 
-    /* Force Simli widget to fit in our container */
+    /* Force Simli widget to be larger so face fills the circle when clipped */
     #simliLayer simli-widget {
-      width: 200px !important;
-      height: 200px !important;
-      max-width: 200px !important;
-      max-height: 200px !important;
+      width: 350px !important;
+      height: 350px !important;
+      position: absolute !important;
+      top: 50% !important;
+      left: 50% !important;
+      transform: translate(-50%, -50%) !important;
+    }
+
+    /* Hide Simli's native UI chrome */
+    #simliLayer simli-widget button,
+    #simliLayer simli-widget [class*="button"],
+    #simliLayer simli-widget [class*="Button"] {
+      display: none !important;
     }
 
     /* Our invisible button overlay - passes clicks through to Simli beneath */
@@ -1349,89 +1360,81 @@
       currentMode = newMode;
 
       if (newMode === 'talk') {
-        // Switch to Talk mode
-        avatarLabel.textContent = 'Loading...';
-
-        // Create Simli widget if not already created
-        if (!simliWidget) {
-          try {
-            const tokenRes = await fetch('/api/simli-token', { method: 'POST' });
-            const tokenData = await tokenRes.json();
-
-            if (tokenData.error) {
-              throw new Error(tokenData.error);
-            }
-
-            simliWidget = document.createElement('simli-widget');
-            simliWidget.setAttribute('token', tokenData.token);
-            simliWidget.setAttribute('agent-id', tokenData.agentId);
-            simliWidget.setAttribute('face-id', tokenData.faceId);
-            simliLayer.appendChild(simliWidget);
-
-          } catch (err) {
-            console.error('Simli setup error:', err);
-            avatarLabel.textContent = 'Setup failed. So it goes.';
-            return;
-          }
-        }
-
-        // Show Simli layer and Connect overlay
-        simliLayer.classList.add('active');
+        // Switch to Talk mode - show Connect button but keep idle video visible
+        // Simli widget is created but hidden until Connect is clicked
         connectOverlay.classList.add('active');
         connectOverlay.classList.remove('connected');
         connectLabel.textContent = 'Connect';
         simliConnected = false;
-        avatarLabel.textContent = 'Click Connect to start';
+        avatarLabel.textContent = 'Click Connect to talk';
 
       } else {
-        // Switch to Text mode
-        simliLayer.classList.remove('active');
+        // Switch to Text mode - hide everything Simli related
+        simliLayer.classList.remove('connected');
         connectOverlay.classList.remove('active');
+        connectOverlay.classList.remove('connected');
         avatarLabel.textContent = 'Kurt is listening...';
       }
     });
 
     // Connect overlay click handler
-    connectOverlay.addEventListener('click', () => {
-      if (!simliWidget) {
-        console.log('No simliWidget yet');
+    connectOverlay.addEventListener('click', async () => {
+      if (simliConnected) {
+        // DISCONNECT - click Simli's button to stop, hide Simli layer
+        if (simliWidget) {
+          const buttons = simliWidget.querySelectorAll('button');
+          if (buttons.length > 0) buttons[0].click();
+        }
+        simliLayer.classList.remove('connected');
+        connectOverlay.classList.remove('connected');
+        connectLabel.textContent = 'Connect';
+        avatarLabel.textContent = 'Click Connect to talk';
+        simliConnected = false;
         return;
       }
 
-      // Find and click Simli's internal button
+      // CONNECT - create widget if needed, then show and start
+      avatarLabel.textContent = 'Connecting...';
+
+      if (!simliWidget) {
+        try {
+          const tokenRes = await fetch('/api/simli-token', { method: 'POST' });
+          const tokenData = await tokenRes.json();
+
+          if (tokenData.error) {
+            throw new Error(tokenData.error);
+          }
+
+          simliWidget = document.createElement('simli-widget');
+          simliWidget.setAttribute('token', tokenData.token);
+          simliWidget.setAttribute('agent-id', tokenData.agentId);
+          simliWidget.setAttribute('face-id', tokenData.faceId);
+          simliLayer.appendChild(simliWidget);
+
+          // Wait for widget to initialize
+          await new Promise(resolve => setTimeout(resolve, 500));
+
+        } catch (err) {
+          console.error('Simli setup error:', err);
+          avatarLabel.textContent = 'Setup failed. So it goes.';
+          return;
+        }
+      }
+
+      // Click Simli's start button
       const buttons = simliWidget.querySelectorAll('button');
       console.log('Found buttons:', buttons.length);
-
-      let clicked = false;
       if (buttons.length > 0) {
         buttons[0].click();
-        clicked = true;
-        console.log('Clicked Simli button');
-      } else if (simliWidget.shadowRoot) {
-        const shadowBtns = simliWidget.shadowRoot.querySelectorAll('button');
-        if (shadowBtns.length > 0) {
-          shadowBtns[0].click();
-          clicked = true;
-          console.log('Clicked shadow DOM button');
-        }
+        console.log('Clicked Simli start button');
       }
 
-      if (clicked) {
-        // Toggle state
-        if (simliConnected) {
-          connectOverlay.classList.remove('connected');
-          connectLabel.textContent = 'Connect';
-          avatarLabel.textContent = 'Click Connect to start';
-          simliConnected = false;
-        } else {
-          connectOverlay.classList.add('connected');
-          connectLabel.textContent = 'Disconnect';
-          avatarLabel.textContent = 'Speaking with Kurt...';
-          simliConnected = true;
-        }
-      } else {
-        console.log('No buttons found to click');
-      }
+      // NOW show Simli layer (replacing idle video visually)
+      simliLayer.classList.add('connected');
+      connectOverlay.classList.add('connected');
+      connectLabel.textContent = 'Disconnect';
+      avatarLabel.textContent = 'Speaking with Kurt...';
+      simliConnected = true;
     });
 
     // ========== SCROLL TRACKING ==========
