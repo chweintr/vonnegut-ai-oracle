@@ -295,28 +295,40 @@
       object-fit: cover;
     }
 
-    /* Simli container - shows when Talk mode is active */
-    #simliContainer {
+    /* Simli overlay - sits on top of idle video, same size */
+    #simliOverlay {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      z-index: 10;
       display: none;
-      flex-direction: column;
-      align-items: center;
-      gap: 1rem;
+      border-radius: 50%;
+      overflow: hidden;
     }
 
-    #simliContainer.active {
-      display: flex;
+    #simliOverlay.active {
+      display: block;
     }
 
-    /* Let Simli render at its natural size */
-    #simliMount {
-      /* Don't constrain - let it be whatever size Simli wants */
+    /* Make Simli widget fill the overlay */
+    #simliOverlay simli-widget {
+      width: 100% !important;
+      height: 100% !important;
+      display: block;
     }
 
-    /* Our connect/disconnect button that proxies to Simli's hidden button */
-    .simli-proxy-btn {
+    /* Our connect button overlays Simli's button */
+    #simliProxyBtn {
+      position: absolute;
+      bottom: 10px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 20;
       font-family: 'Special Elite', monospace;
-      font-size: 0.8rem;
-      padding: 0.5rem 1rem;
+      font-size: 0.7rem;
+      padding: 0.4rem 0.8rem;
       background: var(--rust);
       color: var(--cream);
       border: none;
@@ -325,12 +337,16 @@
       transition: all 0.2s;
     }
 
-    .simli-proxy-btn:hover {
+    #simliProxyBtn:hover {
       background: var(--ink);
     }
 
-    .simli-proxy-btn.disconnect {
+    #simliProxyBtn.disconnect {
       background: var(--pencil);
+    }
+
+    #simliProxyBtn.hidden {
+      display: none;
     }
 
     /* Breathing animation behind avatar - only for SVG */
@@ -812,8 +828,9 @@
     <!-- Companion Pane -->
     <aside class="companion-pane">
       <div class="avatar-area">
-        <!-- Default: idle video in circle -->
+        <!-- Avatar container with idle video + Simli overlay on top -->
         <div class="avatar-container has-video" id="avatarContainer">
+          <!-- Idle loop video (always present as base layer) -->
           <video
             id="idleVideo"
             src="/static/vonnegut_blinking.mp4"
@@ -822,12 +839,12 @@
             muted
             playsinline
           ></video>
-        </div>
 
-        <!-- Simli container: shows when Talk mode active (outside the circle) -->
-        <div id="simliContainer">
-          <div id="simliMount"></div>
-          <button class="simli-proxy-btn" id="simliProxyBtn">Connect</button>
+          <!-- Simli overlay: sits on top of idle video when Talk mode active -->
+          <div id="simliOverlay"></div>
+
+          <!-- Our Connect button: overlays Simli's native button -->
+          <button id="simliProxyBtn" class="hidden">Connect</button>
         </div>
 
         <span class="avatar-label" id="avatarLabel">Kurt is listening...</span>
@@ -903,8 +920,7 @@
     const avatarLabel = document.getElementById('avatarLabel');
     const idleVideo = document.getElementById('idleVideo');
     const avatarContainer = document.getElementById('avatarContainer');
-    const simliContainer = document.getElementById('simliContainer');
-    const simliMount = document.getElementById('simliMount');
+    const simliOverlay = document.getElementById('simliOverlay');
     const simliProxyBtn = document.getElementById('simliProxyBtn');
 
     // ========== STATE ==========
@@ -1301,10 +1317,8 @@
       currentMode = newMode;
 
       if (newMode === 'talk') {
-        // Switch to Talk mode: hide idle video, show Simli container
-        avatarContainer.style.display = 'none';
-        simliContainer.classList.add('active');
-        avatarLabel.textContent = 'Click Connect to start';
+        // Switch to Talk mode: show Simli overlay on top of idle video
+        avatarLabel.textContent = 'Loading...';
 
         // Create Simli widget if not already created
         if (!simliWidget) {
@@ -1320,23 +1334,27 @@
             simliWidget.setAttribute('token', tokenData.token);
             simliWidget.setAttribute('agent-id', tokenData.agentId);
             simliWidget.setAttribute('face-id', tokenData.faceId);
-            simliMount.appendChild(simliWidget);
-
-            // Update proxy button state
-            simliProxyBtn.textContent = 'Connect';
-            simliProxyBtn.classList.remove('disconnect');
-            simliConnected = false;
+            simliOverlay.appendChild(simliWidget);
 
           } catch (err) {
             console.error('Simli setup error:', err);
             avatarLabel.textContent = 'Setup failed. So it goes.';
+            return;
           }
         }
 
+        // Show overlay and Connect button
+        simliOverlay.classList.add('active');
+        simliProxyBtn.classList.remove('hidden');
+        simliProxyBtn.textContent = 'Connect';
+        simliProxyBtn.classList.remove('disconnect');
+        simliConnected = false;
+        avatarLabel.textContent = 'Click Connect to start';
+
       } else {
-        // Switch to Text mode: show idle video, hide Simli container
-        avatarContainer.style.display = 'flex';
-        simliContainer.classList.remove('active');
+        // Switch to Text mode: hide Simli overlay
+        simliOverlay.classList.remove('active');
+        simliProxyBtn.classList.add('hidden');
         avatarLabel.textContent = 'Kurt is listening...';
       }
     });
