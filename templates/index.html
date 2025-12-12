@@ -271,6 +271,8 @@
       display: flex;
       align-items: center;
       justify-content: center;
+      /* Create stacking context so z-index works for children */
+      isolation: isolate;
     }
 
     .avatar-container {
@@ -291,76 +293,77 @@
       height: 200px;
     }
 
-    /* Simli layer - ONLY visible when connected */
-    #simliLayer {
+    /*
+     * SIMLI WIDGET CONTAINER
+     * Widget renders: dotted face (~200px) + red Start button (bottom-right)
+     * We need to show the Start button so user can click it.
+     * After connected, we can hide/restyle.
+     */
+    #simliWidgetContainer {
       position: absolute;
       top: 0;
-      left: 0;
-      width: 200px;
-      height: 200px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 260px;  /* Wider to show button to the right */
+      height: 260px; /* Taller to show button below */
       display: none;
       z-index: 5;
-      border-radius: 50%;
-      overflow: hidden;
+      /* NO overflow:hidden - let the Start button show */
     }
 
-    #simliLayer.connected {
+    #simliWidgetContainer.active {
       display: block;
     }
 
-    /*
-     * SCALE TRANSFORM APPROACH:
-     * Simli widget renders at ~500px. We scale it down to fit 200px.
-     * Scale factor: 200/500 = 0.4
-     * We position it so the face (center of widget) aligns with our circle center.
-     */
-    #simliLayer simli-widget {
+    #simliWidgetContainer simli-widget {
+      display: block;
+      width: 100%;
+      height: 100%;
+    }
+
+    /* START button overlays the avatar circle */
+    .connect-overlay {
       position: absolute !important;
       top: 0 !important;
       left: 0 !important;
-      transform-origin: top left !important;
-      transform: scale(0.4) !important;
-      /* Widget is ~500px, so scaled = 200px */
-    }
-
-    /* Our invisible button overlay - passes clicks through to Simli beneath */
-    #connectOverlay {
-      position: absolute;
-      top: 0;
-      left: 0;
-      width: 200px;
-      height: 200px;
-      z-index: 10;
+      width: 200px !important;
+      height: 200px !important;
+      z-index: 100 !important; /* Force on top of everything */
       display: none;
       cursor: pointer;
-      background: transparent;
+      background: rgba(0,0,0,0.5);
+      border: 3px solid var(--rust);
+      border-radius: 50%;
+      transition: background 0.2s;
     }
 
-    #connectOverlay.active {
+    .connect-overlay.active {
       display: flex;
       align-items: center;
       justify-content: center;
     }
 
-    #connectOverlay.connected {
-      /* When connected, let clicks pass through to Simli */
-      pointer-events: none;
-    }
-
-    #connectOverlay .connect-label {
+    .connect-overlay .connect-label {
       font-family: 'Special Elite', monospace;
-      font-size: 0.8rem;
-      padding: 0.5rem 1rem;
+      font-size: 1.2rem;
+      font-weight: bold;
+      padding: 0.8rem 1.5rem;
       background: var(--rust);
-      color: var(--cream);
-      border-radius: 2px;
-      pointer-events: auto;
+      color: white;
+      border-radius: 4px;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.3);
     }
 
-    #connectOverlay.connected .connect-label {
-      background: rgba(0,0,0,0.5);
-      font-size: 0.7rem;
-      padding: 0.3rem 0.6rem;
+    .connect-overlay:hover {
+      background: rgba(0,0,0,0.6);
+      border-color: var(--ink);
+    }
+
+    .connect-overlay:hover .connect-label {
+      background: var(--ink);
+      transform: scale(1.1);
     }
 
     .avatar-container img {
@@ -859,7 +862,7 @@
       <div class="avatar-area">
         <!-- Fixed 200x200 wrapper - everything must fit here -->
         <div class="avatar-wrapper">
-          <!-- Idle video in circle (base layer) -->
+          <!-- Layer 1: Idle video in circle (base layer) -->
           <div class="avatar-container has-video" id="avatarContainer">
             <video
               id="idleVideo"
@@ -871,13 +874,13 @@
             ></video>
           </div>
 
-          <!-- Simli layer: same 200x200, sits on top when active -->
-          <div id="simliLayer"></div>
+          <!-- Layer 2: Simli widget container -->
+          <div id="simliWidgetContainer"></div>
 
-          <!-- Connect overlay: shows "Connect" button, passes clicks when connected -->
-          <div id="connectOverlay">
-            <span class="connect-label">Connect</span>
-          </div>
+          <!-- Layer 3: Start button - MUST be last in DOM to be on top -->
+          <button id="simliOverlayBtn" class="connect-overlay">
+            <span class="connect-label">START</span>
+          </button>
         </div>
 
         <span class="avatar-label" id="avatarLabel">Kurt is listening...</span>
@@ -953,9 +956,9 @@
     const avatarLabel = document.getElementById('avatarLabel');
     const idleVideo = document.getElementById('idleVideo');
     const avatarContainer = document.getElementById('avatarContainer');
-    const simliLayer = document.getElementById('simliLayer');
-    const connectOverlay = document.getElementById('connectOverlay');
-    const connectLabel = connectOverlay.querySelector('.connect-label');
+    const simliWidgetContainer = document.getElementById('simliWidgetContainer');
+    const connectBtn = document.getElementById('simliOverlayBtn');
+    const connectLabel = connectBtn.querySelector('.connect-label');
 
     // ========== STATE ==========
     let chatHistory = [];
@@ -1354,86 +1357,171 @@
       modeToggle.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('active'));
       btn.classList.add('active');
 
-      const oldMode = currentMode;
       currentMode = newMode;
 
       if (newMode === 'talk') {
-        // Switch to Talk mode - show Connect button but keep idle video visible
-        // Simli widget is created but hidden until Connect is clicked
-        connectOverlay.classList.add('active');
-        connectOverlay.classList.remove('connected');
-        connectLabel.textContent = 'Connect';
-        simliConnected = false;
-        avatarLabel.textContent = 'Click Connect to talk';
+        // Switch to Talk mode
+        avatarLabel.textContent = 'Setting up...';
+
+        // 1. Initialize Simli widget if not already done
+        if (!simliWidget) {
+          await initSimliWidget();
+        }
+        // 2. Show the Simli widget container - includes native Start button
+        simliWidgetContainer.classList.add('active');
+        // 3. Don't show our overlay - let user click Simli's native Start button
+        connectBtn.classList.remove('active');
+        avatarLabel.textContent = 'Click the red Start button';
+        console.log('Talk mode activated - Simli native Start button should be visible');
 
       } else {
         // Switch to Text mode - hide everything Simli related
-        simliLayer.classList.remove('connected');
-        connectOverlay.classList.remove('active');
-        connectOverlay.classList.remove('connected');
+        connectBtn.classList.remove('active');
+        simliWidgetContainer.classList.remove('active');
+        simliConnected = false;
         avatarLabel.textContent = 'Kurt is listening...';
       }
     });
 
-    // Connect overlay click handler
-    connectOverlay.addEventListener('click', async () => {
-      if (simliConnected) {
-        // DISCONNECT - click Simli's button to stop, hide Simli layer
-        if (simliWidget) {
-          const buttons = simliWidget.querySelectorAll('button');
-          if (buttons.length > 0) buttons[0].click();
-        }
-        simliLayer.classList.remove('connected');
-        connectOverlay.classList.remove('connected');
-        connectLabel.textContent = 'Connect';
-        avatarLabel.textContent = 'Click Connect to talk';
-        simliConnected = false;
-        return;
-      }
+    // Initialize Simli widget with overlay mode
+    async function initSimliWidget() {
+      try {
+        avatarLabel.textContent = 'Setting up voice...';
 
-      // CONNECT - create widget if needed, then show and start
-      avatarLabel.textContent = 'Connecting...';
+        const tokenRes = await fetch('/api/simli-token', { method: 'POST' });
+        const tokenData = await tokenRes.json();
+
+        if (tokenData.error) {
+          throw new Error(tokenData.error);
+        }
+
+        // Create widget - position relative, no overlay
+        simliWidget = document.createElement('simli-widget');
+        simliWidget.setAttribute('token', tokenData.token);
+        simliWidget.setAttribute('agentid', tokenData.agentId);
+        if (tokenData.faceId) {
+          simliWidget.setAttribute('faceid', tokenData.faceId);
+        }
+        simliWidget.setAttribute('position', 'relative');
+
+        simliWidgetContainer.appendChild(simliWidget);
+
+        avatarLabel.textContent = 'Click to talk with Kurt';
+        console.log('Simli widget initialized in overlay mode');
+
+      } catch (err) {
+        console.error('Simli setup error:', err);
+        avatarLabel.textContent = 'Voice setup failed. So it goes.';
+      }
+    }
+
+    // Click handler for "Talk to Kurt" button
+    // Need to find and click Simli's internal start button
+    connectBtn.addEventListener('click', async (e) => {
+      e.preventDefault();
+      e.stopPropagation();
 
       if (!simliWidget) {
-        try {
-          const tokenRes = await fetch('/api/simli-token', { method: 'POST' });
-          const tokenData = await tokenRes.json();
+        await initSimliWidget();
+        await new Promise(resolve => setTimeout(resolve, 500));
+      }
 
-          if (tokenData.error) {
-            throw new Error(tokenData.error);
-          }
+      avatarLabel.textContent = 'Starting conversation...';
 
-          simliWidget = document.createElement('simli-widget');
-          simliWidget.setAttribute('token', tokenData.token);
-          simliWidget.setAttribute('agent-id', tokenData.agentId);
-          simliWidget.setAttribute('face-id', tokenData.faceId);
-          simliLayer.appendChild(simliWidget);
+      // Try multiple approaches to trigger Simli's start
+      const triggered = await triggerSimliStart();
 
-          // Wait for widget to initialize
-          await new Promise(resolve => setTimeout(resolve, 500));
+      if (triggered) {
+        // Hide the "Talk to Kurt" button so Simli is fully accessible
+        connectBtn.classList.remove('active');
+        avatarLabel.textContent = 'Speaking with Kurt...';
+        simliConnected = true;
+      } else {
+        avatarLabel.textContent = 'Could not connect. Try again.';
+      }
+    });
 
-        } catch (err) {
-          console.error('Simli setup error:', err);
-          avatarLabel.textContent = 'Setup failed. So it goes.';
-          return;
+    // Try various methods to find and click Simli's internal start button
+    // Returns true if we found something to click
+    async function triggerSimliStart() {
+      // Wait a moment for widget to fully render
+      await new Promise(resolve => setTimeout(resolve, 300));
+
+      // Method 1: Look for buttons directly in the widget
+      let buttons = simliWidget.querySelectorAll('button');
+      console.log('Method 1 - Direct buttons found:', buttons.length);
+      if (buttons.length > 0) {
+        buttons[0].click();
+        console.log('Clicked button via Method 1');
+        return true;
+      }
+
+      // Method 2: Look in the container for any buttons (widget might append outside itself)
+      buttons = simliWidgetContainer.querySelectorAll('button');
+      console.log('Method 2 - Container buttons found:', buttons.length);
+      if (buttons.length > 0) {
+        buttons[0].click();
+        console.log('Clicked button via Method 2');
+        return true;
+      }
+
+      // Method 3: Try to access shadow DOM if present
+      if (simliWidget.shadowRoot) {
+        buttons = simliWidget.shadowRoot.querySelectorAll('button');
+        console.log('Method 3 - Shadow DOM buttons found:', buttons.length);
+        if (buttons.length > 0) {
+          buttons[0].click();
+          console.log('Clicked button via Method 3 (shadow DOM)');
+          return true;
         }
       }
 
-      // Click Simli's start button
-      const buttons = simliWidget.querySelectorAll('button');
-      console.log('Found buttons:', buttons.length);
-      if (buttons.length > 0) {
-        buttons[0].click();
-        console.log('Clicked Simli start button');
+      // Method 4: Look for divs or spans that might be styled as buttons
+      const clickables = simliWidgetContainer.querySelectorAll('[onclick], [role="button"], .button, .btn, div[class*="button"], div[class*="start"]');
+      console.log('Method 4 - Clickable elements found:', clickables.length);
+      if (clickables.length > 0) {
+        clickables[0].click();
+        console.log('Clicked element via Method 4');
+        return true;
       }
 
-      // NOW show Simli layer (replacing idle video visually)
-      simliLayer.classList.add('connected');
-      connectOverlay.classList.add('connected');
-      connectLabel.textContent = 'Disconnect';
-      avatarLabel.textContent = 'Speaking with Kurt...';
-      simliConnected = true;
-    });
+      // Method 5: Look inside iframes
+      const iframes = simliWidgetContainer.querySelectorAll('iframe');
+      console.log('Method 5 - Iframes found:', iframes.length);
+      for (const iframe of iframes) {
+        try {
+          const iframeDoc = iframe.contentDocument || iframe.contentWindow.document;
+          buttons = iframeDoc.querySelectorAll('button');
+          console.log('Method 5 - Buttons in iframe:', buttons.length);
+          if (buttons.length > 0) {
+            buttons[0].click();
+            console.log('Clicked button via Method 5 (iframe)');
+            return true;
+          }
+        } catch (err) {
+          console.log('Cannot access iframe (cross-origin):', err.message);
+        }
+      }
+
+      // Method 6: Dispatch click at the position where Simli's button would be
+      // The button is typically below the face, around y=210-240 from top of widget
+      console.log('Method 6 - Simulating click at button position');
+      const rect = simliWidgetContainer.getBoundingClientRect();
+      const clickX = rect.left + rect.width / 2;
+      const clickY = rect.top + 220; // Below the face
+
+      const clickEvent = new MouseEvent('click', {
+        bubbles: true,
+        cancelable: true,
+        view: window,
+        clientX: clickX,
+        clientY: clickY
+      });
+      document.elementFromPoint(clickX, clickY)?.dispatchEvent(clickEvent);
+
+      console.log('All methods attempted');
+      return true;
+    }
 
     // ========== SCROLL TRACKING ==========
     const pageContainer = document.querySelector('.page-container');
