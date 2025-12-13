@@ -295,20 +295,19 @@
 
     /*
      * SIMLI WIDGET CONTAINER
-     * Widget renders: dotted face (~200px) + red Start button (bottom-right)
-     * We need to show the Start button so user can click it.
-     * After connected, we can hide/restyle.
+     * Widget renders: dotted face + Start button (bottom-right of face)
+     * We clip to 200px circle but position a proxy button to click the hidden Start.
      */
     #simliWidgetContainer {
       position: absolute;
       top: 0;
-      left: 50%;
-      transform: translateX(-50%);
-      width: 260px;  /* Wider to show button to the right */
-      height: 260px; /* Taller to show button below */
+      left: 0;
+      width: 200px;
+      height: 200px;
       display: none;
       z-index: 5;
-      /* NO overflow:hidden - let the Start button show */
+      border-radius: 50%;
+      overflow: hidden; /* Clip to circle */
     }
 
     #simliWidgetContainer.active {
@@ -317,8 +316,37 @@
 
     #simliWidgetContainer simli-widget {
       display: block;
-      width: 100%;
-      height: 100%;
+      width: 300px;  /* Larger so we can position the face part */
+      height: 300px;
+      /* Shift left and up so face centers in our 200px window */
+      margin-left: -50px;
+      margin-top: -20px;
+    }
+
+    /* Proxy Start button - positioned where Simli's Start button would be */
+    #proxyStartBtn {
+      position: absolute;
+      bottom: -50px;  /* Below the clipped circle */
+      right: -30px;   /* To the right */
+      width: 80px;
+      height: 40px;
+      z-index: 50;
+      background: var(--rust);
+      color: white;
+      border: none;
+      border-radius: 4px;
+      font-family: 'Special Elite', monospace;
+      font-size: 0.9rem;
+      cursor: pointer;
+      display: none;
+    }
+
+    #proxyStartBtn.active {
+      display: block;
+    }
+
+    #proxyStartBtn:hover {
+      background: var(--ink);
     }
 
     /* START button overlays the avatar circle */
@@ -874,13 +902,11 @@
             ></video>
           </div>
 
-          <!-- Layer 2: Simli widget container -->
+          <!-- Layer 2: Simli widget container (clipped to 200px circle) -->
           <div id="simliWidgetContainer"></div>
 
-          <!-- Layer 3: Start button - MUST be last in DOM to be on top -->
-          <button id="simliOverlayBtn" class="connect-overlay">
-            <span class="connect-label">START</span>
-          </button>
+          <!-- Layer 3: Our styled Start button that triggers Simli's hidden one -->
+          <button id="proxyStartBtn">Start</button>
         </div>
 
         <span class="avatar-label" id="avatarLabel">Kurt is listening...</span>
@@ -957,8 +983,7 @@
     const idleVideo = document.getElementById('idleVideo');
     const avatarContainer = document.getElementById('avatarContainer');
     const simliWidgetContainer = document.getElementById('simliWidgetContainer');
-    const connectBtn = document.getElementById('simliOverlayBtn');
-    const connectLabel = connectBtn.querySelector('.connect-label');
+    const proxyStartBtn = document.getElementById('proxyStartBtn');
 
     // ========== STATE ==========
     let chatHistory = [];
@@ -1367,16 +1392,16 @@
         if (!simliWidget) {
           await initSimliWidget();
         }
-        // 2. Show the Simli widget container - includes native Start button
+        // 2. Show the Simli widget container (clipped to circle)
         simliWidgetContainer.classList.add('active');
-        // 3. Don't show our overlay - let user click Simli's native Start button
-        connectBtn.classList.remove('active');
-        avatarLabel.textContent = 'Click the red Start button';
-        console.log('Talk mode activated - Simli native Start button should be visible');
+        // 3. Show our proxy Start button
+        proxyStartBtn.classList.add('active');
+        avatarLabel.textContent = 'Click Start to talk';
+        console.log('Talk mode activated');
 
       } else {
         // Switch to Text mode - hide everything Simli related
-        connectBtn.classList.remove('active');
+        proxyStartBtn.classList.remove('active');
         simliWidgetContainer.classList.remove('active');
         simliConnected = false;
         avatarLabel.textContent = 'Kurt is listening...';
@@ -1415,25 +1440,20 @@
       }
     }
 
-    // Click handler for "Talk to Kurt" button
-    // Need to find and click Simli's internal start button
-    connectBtn.addEventListener('click', async (e) => {
+    // Click handler for proxy Start button
+    // Clicks Simli's hidden native Start button
+    proxyStartBtn.addEventListener('click', async (e) => {
       e.preventDefault();
       e.stopPropagation();
 
-      if (!simliWidget) {
-        await initSimliWidget();
-        await new Promise(resolve => setTimeout(resolve, 500));
-      }
+      avatarLabel.textContent = 'Connecting...';
 
-      avatarLabel.textContent = 'Starting conversation...';
-
-      // Try multiple approaches to trigger Simli's start
+      // Try to trigger Simli's native Start button
       const triggered = await triggerSimliStart();
 
       if (triggered) {
-        // Hide the "Talk to Kurt" button so Simli is fully accessible
-        connectBtn.classList.remove('active');
+        // Hide our Start button
+        proxyStartBtn.classList.remove('active');
         avatarLabel.textContent = 'Speaking with Kurt...';
         simliConnected = true;
       } else {
