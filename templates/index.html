@@ -4,7 +4,9 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Vonnebot</title>
-  <!-- LiveKit Web SDK (for voice avatar) -->
+  <!-- Simli Widget SDK (for Talk mode) -->
+  <script src="https://app.simli.com/simli-widget/index.js" defer></script>
+  <!-- LiveKit Web SDK (for future full agent integration) -->
   <script src="https://unpkg.com/livekit-client@2.0.0/dist/livekit-client.umd.min.js"></script>
   <style>
     @import url('https://fonts.googleapis.com/css2?family=Special+Elite&family=Libre+Baskerville:ital,wght@0,400;0,700;1,400&family=Caveat:wght@400;700&display=swap');
@@ -259,11 +261,14 @@
       flex-direction: column;
       align-items: center;
       gap: 1rem;
-      flex-shrink: 0; /* Prevent cropping */
+      flex-shrink: 0;
       padding-bottom: 0.5rem;
     }
 
-    /* Fixed square container - both idle video and Simli must fit here */
+    /*
+     * IDLE VIDEO MODE (Text mode)
+     * Shows blinking Vonnegut video in a circle
+     */
     .avatar-wrapper {
       width: 200px;
       height: 200px;
@@ -271,13 +276,16 @@
       display: flex;
       align-items: center;
       justify-content: center;
-      /* Create stacking context so z-index works for children */
       isolation: isolate;
     }
 
+    .avatar-wrapper.hidden {
+      display: none;
+    }
+
     .avatar-container {
-      width: 180px;
-      height: 180px;
+      width: 200px;
+      height: 200px;
       border-radius: 50%;
       overflow: hidden;
       border: 2px solid var(--pencil);
@@ -288,77 +296,6 @@
       position: relative;
     }
 
-    .avatar-container.has-video {
-      width: 200px;
-      height: 200px;
-    }
-
-    /*
-     * LIVEKIT AVATAR VIDEO
-     * Shows the Simli avatar stream from LiveKit room
-     */
-    #livekitVideoContainer {
-      position: absolute;
-      top: 0;
-      left: 0;
-      width: 200px;
-      height: 200px;
-      display: none;
-      z-index: 5;
-      border-radius: 50%;
-      overflow: hidden;
-      background: #000;
-    }
-
-    #livekitVideoContainer.active {
-      display: block;
-    }
-
-    #livekitVideoContainer video {
-      width: 100%;
-      height: 100%;
-      object-fit: cover;
-    }
-
-    /* Connect button for Talk mode */
-    #connectBtn {
-      position: absolute;
-      bottom: -40px;
-      left: 50%;
-      transform: translateX(-50%);
-      padding: 0.5rem 1.2rem;
-      z-index: 50;
-      background: var(--rust);
-      color: white;
-      border: none;
-      border-radius: 4px;
-      font-family: 'Special Elite', monospace;
-      font-size: 0.85rem;
-      cursor: pointer;
-      display: none;
-      transition: background 0.2s;
-    }
-
-    #connectBtn.active {
-      display: block;
-    }
-
-    #connectBtn:hover {
-      background: var(--ink);
-    }
-
-    #connectBtn:disabled {
-      background: var(--pencil);
-      cursor: not-allowed;
-    }
-
-    .avatar-container img {
-      width: 90%;
-      height: 90%;
-      object-fit: contain;
-    }
-
-    .avatar-container iframe,
     .avatar-container video {
       width: 100%;
       height: 100%;
@@ -366,15 +303,53 @@
       object-fit: cover;
     }
 
+    /*
+     * SIMLI WIDGET MODE (Talk mode)
+     * Widget renders at its natural size with beige frame around it
+     */
+    .simli-wrapper {
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.5rem;
+    }
 
-    /* Breathing animation behind avatar - only for SVG */
-    .avatar-container:not(.has-video)::before {
+    .simli-wrapper.active {
+      display: flex;
+    }
+
+    /* Beige frame around the Simli widget */
+    .simli-frame {
+      background: var(--paper);
+      border: 2px solid var(--pencil);
+      border-radius: 8px;
+      padding: 1rem;
+      box-shadow:
+        2px 2px 0 var(--cream),
+        4px 4px 8px rgba(0,0,0,0.1);
+    }
+
+    /* Let Simli widget render at natural size */
+    .simli-frame simli-widget {
+      display: block;
+    }
+
+    .simli-instruction {
+      font-family: 'Caveat', cursive;
+      font-size: 1rem;
+      color: var(--pencil);
+      text-align: center;
+    }
+
+    /* Breathing animation behind avatar - only when no video playing */
+    .avatar-container::before {
       content: '';
       position: absolute;
       width: 100%;
       height: 100%;
       background: radial-gradient(circle, rgba(92, 85, 73, 0.1) 0%, transparent 70%);
       animation: breathe 4s ease-in-out infinite;
+      z-index: -1;
     }
 
     @keyframes breathe {
@@ -846,10 +821,9 @@
     <!-- Companion Pane -->
     <aside class="companion-pane">
       <div class="avatar-area">
-        <!-- Fixed 200x200 wrapper - everything must fit here -->
-        <div class="avatar-wrapper">
-          <!-- Layer 1: Idle video in circle (base layer) -->
-          <div class="avatar-container has-video" id="avatarContainer">
+        <!-- TEXT MODE: Idle video in circle -->
+        <div class="avatar-wrapper" id="idleWrapper">
+          <div class="avatar-container" id="avatarContainer">
             <video
               id="idleVideo"
               src="/static/vonnegut_blinking.mp4"
@@ -859,28 +833,27 @@
               playsinline
             ></video>
           </div>
+        </div>
 
-          <!-- Layer 2: LiveKit video container for avatar stream -->
-          <div id="livekitVideoContainer">
-            <video id="avatarVideo" autoplay playsinline></video>
+        <!-- TALK MODE: Simli widget with beige frame -->
+        <div class="simli-wrapper" id="simliWrapper">
+          <div class="simli-frame">
+            <!-- Simli widget will be inserted here -->
+            <div id="simliWidgetContainer"></div>
           </div>
-
-          <!-- Layer 3: Connect button for Talk mode -->
-          <button id="connectBtn">Connect</button>
+          <span class="simli-instruction">Click the Start button to talk with Kurt</span>
         </div>
 
         <span class="avatar-label" id="avatarLabel">Kurt is listening...</span>
 
-        <!-- Mode Toggle (Talk mode disabled until LiveKit agent is deployed) -->
+        <!-- Mode Toggle -->
         <div class="mode-toggle" id="modeToggle">
           <button class="mode-btn active" data-mode="text" title="Type to chat (fast)">
             <span>&#9998;</span> Text
           </button>
-          <!-- Talk mode hidden - requires LiveKit agent deployment
           <button class="mode-btn" data-mode="talk" title="Voice conversation with Kurt">
-            <span>&#9786;</span> Talk
+            <span>&#127908;</span> Talk
           </button>
-          -->
         </div>
       </div>
 
@@ -943,18 +916,17 @@
     const modeToggle = document.getElementById('modeToggle');
     const avatarLabel = document.getElementById('avatarLabel');
     const idleVideo = document.getElementById('idleVideo');
-    const avatarContainer = document.getElementById('avatarContainer');
-    const livekitVideoContainer = document.getElementById('livekitVideoContainer');
-    const avatarVideo = document.getElementById('avatarVideo');
-    const connectBtn = document.getElementById('connectBtn');
+    const idleWrapper = document.getElementById('idleWrapper');
+    const simliWrapper = document.getElementById('simliWrapper');
+    const simliWidgetContainer = document.getElementById('simliWidgetContainer');
 
     // ========== STATE ==========
     let chatHistory = [];
     let currentPassageIndex = 0;
     let currentParagraphs = [];
     let currentMode = 'text'; // 'text' or 'talk'
-    let livekitRoom = null;
-    let livekitConnected = false;
+    let simliWidget = null;
+    let simliInitialized = false;
     let audioQueue = [];
     let isPlayingAudio = false;
 
@@ -1348,110 +1320,63 @@
       currentMode = newMode;
 
       if (newMode === 'talk') {
-        // Switch to Talk mode - show Connect button
-        avatarLabel.textContent = 'Click Connect to talk';
-        connectBtn.classList.add('active');
+        // Switch to Talk mode - show Simli widget, hide idle video
+        idleWrapper.classList.add('hidden');
+        simliWrapper.classList.add('active');
+        avatarLabel.textContent = 'Click Start to talk with Kurt';
+
+        // Initialize Simli widget if not already done
+        if (!simliInitialized) {
+          await initSimliWidget();
+        }
+
         console.log('Talk mode activated');
       } else {
-        // Switch to Text mode - disconnect and hide
-        if (livekitConnected && livekitRoom) {
-          await livekitRoom.disconnect();
-          livekitRoom = null;
-          livekitConnected = false;
-        }
-        connectBtn.classList.remove('active');
-        livekitVideoContainer.classList.remove('active');
+        // Switch to Text mode - show idle video, hide Simli widget
+        simliWrapper.classList.remove('active');
+        idleWrapper.classList.remove('hidden');
         avatarLabel.textContent = 'Kurt is listening...';
+        console.log('Text mode activated');
       }
     });
 
-    // Connect button handler - connects to LiveKit room
-    connectBtn.addEventListener('click', async () => {
-      if (livekitConnected) {
-        // Disconnect
-        if (livekitRoom) {
-          await livekitRoom.disconnect();
-          livekitRoom = null;
-        }
-        livekitConnected = false;
-        livekitVideoContainer.classList.remove('active');
-        connectBtn.textContent = 'Connect';
-        avatarLabel.textContent = 'Click Connect to talk';
-        return;
-      }
-
-      // Connect to LiveKit
-      connectBtn.disabled = true;
-      connectBtn.textContent = 'Connecting...';
-      avatarLabel.textContent = 'Connecting to Kurt...';
-
+    // Initialize Simli widget
+    async function initSimliWidget() {
       try {
-        // Get LiveKit token from backend
-        const tokenRes = await fetch('/api/livekit-token', { method: 'POST' });
+        avatarLabel.textContent = 'Loading voice mode...';
+
+        // Get token from backend
+        const tokenRes = await fetch('/api/simli-token', { method: 'POST' });
         const tokenData = await tokenRes.json();
 
         if (tokenData.error) {
           throw new Error(tokenData.error);
         }
 
-        console.log('Got LiveKit token, connecting to room:', tokenData.room);
+        console.log('Got Simli token, creating widget');
 
-        // Create LiveKit room and connect
-        const { Room, RoomEvent, Track } = LivekitClient;
-        livekitRoom = new Room();
+        // Create the Simli widget element
+        simliWidget = document.createElement('simli-widget');
+        simliWidget.setAttribute('token', tokenData.token);
+        simliWidget.setAttribute('agentid', tokenData.agentId);
+        if (tokenData.faceId) {
+          simliWidget.setAttribute('faceid', tokenData.faceId);
+        }
+        // Use relative position so it flows in document
+        simliWidget.setAttribute('position', 'relative');
 
-        // Handle track subscriptions (video from agent)
-        livekitRoom.on(RoomEvent.TrackSubscribed, (track, publication, participant) => {
-          console.log('Track subscribed:', track.kind, 'from', participant.identity);
-          if (track.kind === Track.Kind.Video) {
-            // Attach video track to our video element
-            track.attach(avatarVideo);
-            livekitVideoContainer.classList.add('active');
-            avatarLabel.textContent = 'Speaking with Kurt...';
-          }
-          if (track.kind === Track.Kind.Audio) {
-            // Attach audio track (creates hidden audio element)
-            const audioElement = track.attach();
-            document.body.appendChild(audioElement);
-          }
-        });
+        // Add to container
+        simliWidgetContainer.appendChild(simliWidget);
 
-        // Handle track unsubscriptions
-        livekitRoom.on(RoomEvent.TrackUnsubscribed, (track) => {
-          console.log('Track unsubscribed:', track.kind);
-          track.detach();
-        });
-
-        // Handle disconnection
-        livekitRoom.on(RoomEvent.Disconnected, () => {
-          console.log('Disconnected from LiveKit room');
-          livekitConnected = false;
-          livekitVideoContainer.classList.remove('active');
-          connectBtn.textContent = 'Connect';
-          connectBtn.disabled = false;
-          avatarLabel.textContent = 'Click Connect to talk';
-        });
-
-        // Connect to the room
-        await livekitRoom.connect(tokenData.url, tokenData.token);
-        console.log('Connected to LiveKit room');
-
-        // Enable microphone for voice input
-        await livekitRoom.localParticipant.setMicrophoneEnabled(true);
-        console.log('Microphone enabled');
-
-        livekitConnected = true;
-        connectBtn.textContent = 'Disconnect';
-        connectBtn.disabled = false;
-        avatarLabel.textContent = 'Waiting for Kurt...';
+        simliInitialized = true;
+        avatarLabel.textContent = 'Click Start to talk with Kurt';
+        console.log('Simli widget initialized');
 
       } catch (err) {
-        console.error('LiveKit connection error:', err);
-        avatarLabel.textContent = 'Connection failed. So it goes.';
-        connectBtn.textContent = 'Connect';
-        connectBtn.disabled = false;
+        console.error('Simli setup error:', err);
+        avatarLabel.textContent = 'Voice setup failed. So it goes.';
       }
-    });
+    }
 
     // ========== SCROLL TRACKING ==========
     const pageContainer = document.querySelector('.page-container');
