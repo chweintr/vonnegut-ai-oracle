@@ -305,40 +305,44 @@
 
     /*
      * SIMLI WIDGET MODE (Talk mode)
-     * Widget renders at its natural size with beige frame around it
+     * Constrain widget to match the idle video circle size
      */
     .simli-wrapper {
       display: none;
       flex-direction: column;
       align-items: center;
       gap: 0.5rem;
+      width: 200px;
     }
 
     .simli-wrapper.active {
       display: flex;
     }
 
-    /* Beige frame around the Simli widget */
+    /* Container matches idle video size - circular clip */
     .simli-frame {
-      background: var(--paper);
+      width: 200px;
+      height: 200px;
+      border-radius: 50%;
+      overflow: hidden;
       border: 2px solid var(--pencil);
-      border-radius: 8px;
-      padding: 1rem;
-      box-shadow:
-        2px 2px 0 var(--cream),
-        4px 4px 8px rgba(0,0,0,0.1);
+      background: #000;
+      position: relative;
     }
 
-    /* Let Simli widget render at natural size */
+    /* Scale and position the widget so face fills the circle */
     .simli-frame simli-widget {
       display: block;
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%) scale(0.5);
+      transform-origin: center center;
     }
 
-    .simli-instruction {
-      font-family: 'Caveat', cursive;
-      font-size: 1rem;
-      color: var(--pencil);
-      text-align: center;
+    /* Style the Start/Close button to appear below the circle */
+    .simli-btn-container {
+      margin-top: 0.5rem;
     }
 
     /* Breathing animation behind avatar - only when no video playing */
@@ -835,13 +839,11 @@
           </div>
         </div>
 
-        <!-- TALK MODE: Simli widget with beige frame -->
+        <!-- TALK MODE: Simli widget in circular frame -->
         <div class="simli-wrapper" id="simliWrapper">
           <div class="simli-frame">
-            <!-- Simli widget will be inserted here -->
             <div id="simliWidgetContainer"></div>
           </div>
-          <span class="simli-instruction">Click the Start button to talk with Kurt</span>
         </div>
 
         <span class="avatar-label" id="avatarLabel">Kurt is listening...</span>
