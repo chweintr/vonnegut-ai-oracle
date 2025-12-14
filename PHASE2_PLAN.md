@@ -1,21 +1,47 @@
 # Phase 2: Full RAG + Voice Integration Plan
 
-## Current State
-- **Working**: Simli widget with basic Vonnegut persona (no RAG, no reading context)
-- **Problem**: Simli's hosted agent can't access our backend, corpus, or see what user is reading
+## Change Log
+
+| Date | Change | Reason |
+|------|--------|--------|
+| 2024-12-13 | Replaced Simli Widget with LiveKit Web SDK | Simli widget (iframe) ignored all CSS; LiveKit gives direct video element control |
+| 2024-12-13 | Added `vonnebot_agent.py` as separate service | Needed server-side agent to handle voice + RAG + Simli avatar |
 
 ---
 
-## Architecture for Full Integration
+## Architecture Evolution
+
+### Previous Architecture (DEPRECATED)
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                     USER BROWSER                             │
+│  ┌─────────────┐  ┌──────────────────────────────────────┐  │
+│  │ Flask       │  │ Simli Widget (iframe)                │  │
+│  │ Frontend    │  │ - Hosted by Simli                    │  │
+│  │             │  │ - Ignores our CSS completely         │  │
+│  │             │  │ - Can't access our backend           │  │
+│  │             │  │ - No RAG, no reading context         │  │
+│  └─────────────┘  └──────────────────────────────────────┘  │
+└─────────────────────────────────────────────────────────────┘
+```
+
+**Why this failed:**
+1. Simli Widget is an `<iframe>` web component that renders at its own size
+2. CSS transforms (`scale`, `clip-path`, `overflow:hidden`) had no effect
+3. The widget's internal "Start" button was inaccessible due to cross-origin restrictions
+4. The hosted Simli agent couldn't access our Flask backend, corpus, or see what text the user was reading
+
+### Current Architecture (IMPLEMENTED 2024-12-13)
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────┐
 │                            USER BROWSER                                  │
 │  ┌─────────────┐  ┌─────────────┐  ┌─────────────────────────────────┐  │
-│  │ Reading     │  │ Simli       │  │ Microphone                      │  │
-│  │ Pane        │  │ Avatar      │  │ (WebRTC audio to LiveKit)       │  │
-│  │ (visible    │  │ (video)     │  │                                 │  │
-│  │  passage)   │  │             │  │                                 │  │
+│  │ Reading     │  │ <video>     │  │ Microphone                      │  │
+│  │ Pane        │  │ element     │  │ (WebRTC audio to LiveKit)       │  │
+│  │ (visible    │  │ (WE control │  │                                 │  │
+│  │  passage)   │  │  the CSS!)  │  │                                 │  │
 │  └──────┬──────┘  └──────▲──────┘  └────────────────┬────────────────┘  │
 │         │                │                          │                    │
 └─────────┼────────────────┼──────────────────────────┼────────────────────┘
@@ -50,6 +76,146 @@
 └──────────────────────────────────────────────────────────────────────────┘
 ```
 
+**Why this works:**
+1. LiveKit Web SDK gives us a raw `<video>` element we fully control
+2. We can apply `border-radius: 50%`, `object-fit: cover`, exact sizing
+3. Our `vonnebot_agent.py` runs server-side with full access to RAG corpus
+4. Agent can receive reading context and incorporate it into responses
+
+---
+
+## Key Files
+
+### Frontend (Flask + Jinja2)
+- `app.py` - Flask backend with `/api/livekit-token` endpoint
+- `templates/index.html` - Main UI with LiveKit Web SDK integration
+
+### Agent (LiveKit + Simli)
+- `vonnebot_agent.py` - LiveKit agent that handles voice AI + Simli avatar
+- `requirements-agent.txt` - Dependencies for agent service
+
+### Configuration
+- `.env` - Environment variables (API keys, LiveKit credentials)
+- `prompts_base_prompt.txt` - Vonnegut persona system prompt
+
+### RAG Corpus
+- `data/corpus_index.jsonl` - Pre-embedded corpus chunks
+- `data/corpus_manifest.json` - Corpus metadata
+
+---
+
+## Environment Variables Required
+
+### Flask Frontend (Railway main service)
+```
+OPENAI_API_KEY=sk-...
+ELEVENLABS_API_KEY=...
+ELEVENLABS_VOICE_ID=...
+LIVEKIT_URL=wss://your-project.livekit.cloud
+LIVEKIT_API_KEY=...
+LIVEKIT_API_SECRET=...
+```
+
+### Vonnebot Agent (Railway separate service)
+```
+LIVEKIT_URL=wss://your-project.livekit.cloud
+LIVEKIT_API_KEY=...
+LIVEKIT_API_SECRET=...
+SIMLI_API_KEY=...
+SIMLI_FACE_ID=...
+OPENAI_API_KEY=sk-...
+```
+
+---
+
+## Connection Flow (Talk Mode)
+
+1. User clicks "Talk" mode toggle
+2. "Connect" button appears
+3. User clicks "Connect"
+4. Frontend calls `/api/livekit-token` to get room credentials
+5. Frontend connects to LiveKit room via `LivekitClient.Room()`
+6. Frontend enables microphone: `room.localParticipant.setMicrophoneEnabled(true)`
+7. `vonnebot_agent.py` (running on Railway) detects new room participant
+8. Agent starts Simli avatar session, publishes video track
+9. Frontend receives video track, attaches to `<video id="avatarVideo">`
+10. Video displays in 200px circle with proper CSS styling
+11. User speaks → Agent hears via LiveKit → GPT-4o processes → Simli lip-syncs response
+
+---
+
+## Lessons Learned
+
+### The Simli Widget Problem
+
+**What we tried:**
+1. CSS `transform: scale(0.5)` - Widget rendered at internal size, then scaled (blurry, wrong position)
+2. `overflow: hidden` on container - Widget still rendered outside bounds
+3. Proxy button to click hidden Start - Cross-origin iframe blocked access
+4. CSS masks and radial gradients - Still couldn't affect iframe content
+
+**Root cause:** Simli Widget is a web component that creates an iframe. Iframes render independently of parent CSS. There's no way to force an iframe to render at a different internal resolution.
+
+**Solution:** Don't use the widget. Use LiveKit + Simli SDK instead, which gives us a raw video stream we can attach to our own `<video>` element.
+
+### Why Two Services?
+
+The Flask frontend can't run a LiveKit agent in the same process because:
+1. LiveKit agents need to stay connected to rooms indefinitely
+2. Flask is request/response based, not long-running
+3. Agent needs different dependencies (`livekit-agents`, `livekit-plugins-simli`)
+
+So we deploy `vonnebot_agent.py` as a separate Railway service that:
+- Connects to LiveKit Cloud
+- Listens for new rooms
+- Joins when a user connects
+- Runs the voice AI pipeline
+
+---
+
+## Current Status Summary
+
+| Feature | Status | Notes |
+|---------|--------|-------|
+| Text chat | ✅ Working | Fast, great UX |
+| K.V.*bot signature | ✅ Working | Animated typewriter effect |
+| Doodle responses | ✅ Working | SVG drawings with random triggers |
+| Disclaimer | ✅ Working | Collapsible footer |
+| Idle video avatar | ✅ Working | Blinking Vonnegut loop |
+| LiveKit connection | ✅ Frontend ready | Needs agent deployed |
+| Vonnebot agent | 🟡 Code ready | Needs Railway deployment |
+| Text + Voice (Mode 2) | ✅ Backend ready | SSE streaming + TTS implemented |
+| Full voice mode | 🟡 In progress | Awaiting LiveKit Cloud setup |
+
+---
+
+## Deployment Checklist
+
+### 1. LiveKit Cloud Setup
+- [ ] Create LiveKit Cloud project at https://cloud.livekit.io
+- [ ] Get API Key and Secret
+- [ ] Note the WebSocket URL (e.g., `wss://your-project.livekit.cloud`)
+
+### 2. Simli Setup
+- [ ] Get Simli API key from https://app.simli.com
+- [ ] Create a face or get a face ID
+- [ ] Note both values for agent env vars
+
+### 3. Railway: Update Main Service
+- [ ] Add `LIVEKIT_URL`, `LIVEKIT_API_KEY`, `LIVEKIT_API_SECRET` to environment
+
+### 4. Railway: Create Agent Service
+- [ ] Create new Railway service in same project
+- [ ] Set root directory or Dockerfile to run `vonnebot_agent.py`
+- [ ] Add all agent env vars
+- [ ] Deploy
+
+### 5. Test
+- [ ] Open site, click "Talk", click "Connect"
+- [ ] Check browser console for "Connected to LiveKit room"
+- [ ] Check agent logs for "Vonnebot agent is now active"
+- [ ] Speak and verify avatar responds
+
 ---
 
 ## Latency Considerations
@@ -76,277 +242,44 @@
 | **Pre-computed embeddings** | -50-100ms | Already doing this |
 | **Edge deployment** | -50-100ms | More infrastructure |
 
-### Sweet Spot Recommendations
-- **System prompt**: 500-800 words max (currently ~1000)
-- **RAG chunks**: Top 2 results, 200-300 words each
-- **LLM max tokens**: 150-200 (conversational, not essays)
-- **ElevenLabs**: Use "turbo" model for lower latency
-
 ---
 
-## What to Ask Vonnegut Scholars
+## Three Interaction Modes
 
-### 1. Essential Biographical Facts (for accuracy)
-- "What are the most commonly misquoted or misattributed Vonnegut facts?"
-- "What dates/events do people get wrong most often?"
-- "Are there any persistent myths about Vonnegut we should avoid?"
-
-### 2. Voice & Speech Patterns (for persona)
-- "How would you describe his actual speaking voice vs. his writing voice?"
-- "What phrases or verbal tics did he use in interviews vs. on the page?"
-- "How did his speaking style change over the decades?"
-
-### 3. Teaching Philosophy (for pedagogical moods)
-- "What was his actual teaching style at Iowa? Socratic? Lecture? Workshop?"
-- "How did he balance being a 'star' with being a working teacher?"
-- "What feedback did students say he gave? Encouraging? Tough? Cryptic?"
-
-### 4. Corpus Prioritization (for RAG efficiency)
-**Key question**: "If we can only use 50-100 passages for grounding, which would capture the essential Vonnegut?"
-
-Candidates to ask about:
-- **Interviews**: Which are most representative? (Playboy? Paris Review? Wampeters?)
-- **Essays**: A Man Without a Country vs. Palm Sunday vs. Fates Worse Than Death?
-- **Letters**: Are the collected letters worth including? Which recipients?
-- **Speeches**: Graduation speeches? Humanist speeches?
-
-### 5. Thematic Clusters (for smarter retrieval)
-- "What are the 5-10 themes he returned to obsessively?"
-- "Which books/passages best represent each theme?"
-- "Are there 'hidden gem' passages scholars love that general readers miss?"
-
-### 6. Rights & Sensitivities
-- "What would the estate care about most if they saw this?"
-- "Are there topics/periods he wouldn't want AI 'channeling'?"
-- "How would you frame the disclaimer to be respectful?"
-
----
-
-## Corpus Strategy for Low Latency
-
-### Tiered Approach
-
-**Tier 1: Always Available (baked into system prompt)**
-~500 words of essential "Vonnegut DNA":
-- Key biographical facts
-- 5-10 signature phrases with attribution
-- Core philosophical positions
-- Speech pattern examples
-
-**Tier 2: Fast RAG (small, high-quality)**
-~50 passages, pre-embedded:
-- Most quotable moments from major works
-- Key interview responses on common topics
-- Biographical anecdotes he told repeatedly
-
-**Tier 3: Deep RAG (on-demand)**
-Full corpus, but only searched when:
-- User asks about a specific book
-- User asks a detailed/scholarly question
-- System detects the question needs grounding
-
-### Suggested Passage Selection Criteria
-Ask scholars: "For each passage, rate 1-5 on:"
-1. **Quotability** - Would Vonnegut have repeated this?
-2. **Representativeness** - Does this sound like him?
-3. **Uniqueness** - Does this add something the prompt can't?
-4. **Brevity** - Is it under 200 words?
-
----
-
-## Implementation Steps
-
-### Step 1: Optimize Current Setup
-- [ ] Trim system prompt to ~600 words
-- [ ] Test latency with current Simli agent
-- [ ] Benchmark: what's acceptable? 2 seconds? 3?
-
-### Step 2: Set Up LiveKit Agent Service
-- [ ] Deploy `vonnebot_agent.py` to Railway as separate service
-- [ ] Configure LiveKit Cloud project
-- [ ] Test basic voice-to-voice (no RAG yet)
-
-### Step 3: Add RAG to Agent
-- [ ] Integrate corpus search into agent pipeline
-- [ ] Implement tiered retrieval (fast vs. deep)
-- [ ] Test latency impact
-
-### Step 4: Add Reading Context
-- [ ] Pass visible passage from frontend to agent
-- [ ] Agent includes passage in LLM context
-- [ ] Test: "What do you think of this passage?" works
-
-### Step 5: Optimize
-- [ ] Profile each pipeline step
-- [ ] Implement streaming where possible
-- [ ] A/B test prompt lengths
-
----
-
-## Questions for You
-
-1. **Acceptable latency?** 2 seconds? 3? What's the UX breaking point?
-2. **Simli agent system prompt**: How long is it currently? Can you paste it?
-3. **Corpus size**: How many passages do we have? Can we curate to ~50 "best"?
-4. **ElevenLabs model**: Are you using "turbo" or standard?
-5. **Budget**: LiveKit and agent hosting will add costs. Rough limits?
-
----
-
-## For the Scholar Meeting
-
-### Deliverable Request
-Ask if they'd be willing to:
-1. **Review our 50-passage shortlist** - "Does this capture him?"
-2. **Record themselves doing Vonnegut voice** - Reference for persona tuning
-3. **Red-team the bot** - "Try to make it say something he wouldn't"
-4. **Suggest 'test questions'** - "A real Vonnegut would answer X this way"
-
-### What to Bring
-- Demo of current (non-RAG) voice mode
-- List of passages we're considering
-- The system prompt for their review
-- Specific questions about his speaking style
-
----
-
-## Three Interaction Modes (Target Architecture)
-
-We want three distinct modes, each serving different use cases:
-
-### Mode 1: Text → Text (WORKING ✓)
+### Mode 1: Text → Text (WORKING)
 - User types question
 - GPT-4o responds (~1-2 sec)
 - Text appears instantly
 - **Status**: Fully working, fast, great UX
 
-### Mode 2: Text → Text + Streaming Voice (TO BUILD)
+### Mode 2: Text → Text + Streaming Voice (BACKEND READY)
 - User types question
-- GPT-4o streams response
+- GPT-4o streams response via SSE
 - Text types out in real-time AS voice reads aloud
-- Text and audio are synchronized
-- **Status**: Not yet implemented
+- `/api/chat-stream` and `/api/tts` endpoints implemented
+- **Status**: Backend complete, frontend integration done
 
 ### Mode 3: Voice → Voice + Video (IN PROGRESS)
-- User speaks to Simli avatar
+- User speaks to avatar
 - Full voice conversation with lip-synced video
-- Requires LiveKit + Simli integration
-- **Status**: Simli widget loads but needs LiveKit agent for RAG/context
+- LiveKit Web SDK integration complete in frontend
+- **Status**: Needs agent deployed to Railway
 
 ---
 
-## Mode 2: Streaming Text + Voice Implementation Plan
+## For Future Agents
 
-### The Goal
-Text types out character-by-character synchronized with ElevenLabs reading it aloud. User sees AND hears the response simultaneously.
+If you're continuing this work:
 
-### Architecture
+1. **Don't try to fix the Simli Widget approach** - It's fundamentally broken due to iframe limitations. The LiveKit approach is correct.
 
-```
-User types question
-        │
-        ▼
-┌─────────────────┐
-│  GPT-4o         │
-│  (streaming)    │──── chunks arrive every ~50-100ms
-└────────┬────────┘
-         │
-         ▼
-┌─────────────────────────────────────────┐
-│           CHUNK BUFFER                   │
-│  Accumulate until sentence boundary      │
-│  (period, question mark, exclamation)    │
-└────────┬────────────────────┬───────────┘
-         │                    │
-         ▼                    ▼
-┌─────────────────┐  ┌─────────────────┐
-│  Frontend       │  │  ElevenLabs     │
-│  (type out      │  │  (TTS stream)   │
-│   text)         │  │                 │
-└─────────────────┘  └─────────────────┘
-         │                    │
-         ▼                    ▼
-    Text appears         Audio plays
-    (typing effect)      (synchronized)
-```
+2. **The agent MUST run separately** - It's a long-running process that can't live inside Flask.
 
-### Key Technical Challenges
+3. **Check Railway logs** - If voice isn't working, check both the main service logs AND the agent service logs.
 
-1. **Sentence-level chunking**: Can't send word-by-word to ElevenLabs (too choppy). Need to buffer until sentence boundaries.
+4. **LiveKit room lifecycle** - Rooms are created per-user session. The agent joins when it sees a new room. If the agent isn't running, the user will connect but see no avatar.
 
-2. **Synchronization**: Text typing speed must match audio duration. Options:
-   - Calculate typing speed based on ElevenLabs audio duration
-   - Use ElevenLabs word-level timestamps (if available)
-   - Approximate: ~150 words per minute = ~12 chars/second
-
-3. **Streaming TTS**: ElevenLabs supports streaming—audio starts before full text is processed.
-
-### Implementation Steps
-
-#### Step 1: Backend Streaming Endpoint
-- [ ] Create `/api/chat-stream` endpoint using Server-Sent Events (SSE)
-- [ ] Stream GPT-4o response chunks to frontend
-- [ ] Buffer chunks until sentence boundaries
-- [ ] Send complete sentences as events
-
-#### Step 2: ElevenLabs Streaming Integration
-- [ ] Add ElevenLabs streaming TTS endpoint
-- [ ] Accept sentence, return audio stream
-- [ ] Use "eleven_turbo_v2" model for lower latency
-
-#### Step 3: Frontend Synchronized Playback
-- [ ] Receive SSE chunks from backend
-- [ ] For each sentence:
-  - Start typing animation
-  - Fetch audio from ElevenLabs
-  - Play audio
-  - Time typing to match audio duration
-- [ ] Queue sentences so they play sequentially
-
-#### Step 4: UI Toggle
-- [ ] Add mode selector: [Text] [Text + Voice] [Talk to Kurt]
-- [ ] "Text + Voice" activates streaming mode
-- [ ] Show audio waveform or speaker icon when voice is active
-
-### Fallback Strategy
-If synchronization is too complex:
-- **Option B**: Text appears fast (as now), then 🔊 button to replay with voice
-- Still useful, much simpler to implement
-- Can upgrade to full sync later
-
-### Environment Variables Needed
-```
-ELEVENLABS_API_KEY=xxx
-ELEVENLABS_VOICE_ID=xxx  # Vonnegut-like voice
-```
-
-### Cost Estimate
-- ElevenLabs: ~$0.02 per response (400 chars average)
-- At 1000 responses/day: ~$20/day
-- Turbo model is same price but faster
-
----
-
-## Current Status Summary
-
-| Feature | Status | Notes |
-|---------|--------|-------|
-| Text chat | ✅ Working | Fast, great UX |
-| K.V.*bot signature | ✅ Working | Animated typewriter effect |
-| Doodle responses | ✅ Working | SVG drawings with random triggers |
-| Disclaimer | ✅ Working | Collapsible footer |
-| Idle video avatar | ✅ Working | Blinking Vonnegut loop |
-| Simli widget | 🟡 Partial | Loads but no RAG/context |
-| Text + Voice (Mode 2) | ❌ Not started | Plan documented above |
-| LiveKit agent (Mode 3) | ❌ Not started | Requires separate service |
-
----
-
-## Next Steps (Priority Order)
-
-1. **Mode 2 (Text + Voice)**: Implement streaming endpoint + ElevenLabs integration
-2. **Test Simli widget**: Verify current widget actually works for basic conversation
-3. **Mode 3 (LiveKit)**: Deploy agent backend, connect Simli for RAG-powered voice
+5. **Simli face ID** - You need a valid face ID from Simli's dashboard. The face determines the avatar appearance.
 
 ---
 
