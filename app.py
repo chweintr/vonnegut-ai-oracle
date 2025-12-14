@@ -174,9 +174,17 @@ def get_simli_token():
         response.raise_for_status()
         data = response.json()
 
+        # Debug: log what Simli returned
+        print(f"Simli response keys: {data.keys()}")
+        print(f"Simli response: {data}")
+
+        token = data.get("token") or data.get("sessionToken")
+        if not token:
+            return jsonify({"error": f"No token in Simli response. Got: {data}"}), 500
+
         # Return token and agentId (faceId is configured in the agent on Simli dashboard)
         return jsonify({
-            "token": data.get("token") or data.get("sessionToken"),
+            "token": token,
             "agentId": SIMLI_AGENT_ID
         })
     except requests.exceptions.HTTPError as e:
