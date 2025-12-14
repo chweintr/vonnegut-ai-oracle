@@ -1362,6 +1362,8 @@
         simliWidget.setAttribute('agentid', tokenData.agentId);
         // Use relative position so it flows in document
         simliWidget.setAttribute('position', 'relative');
+        // Replace dotted face with a black placeholder (data URI for 1x1 black pixel)
+        simliWidget.setAttribute('customimage', 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==');
 
         // Add to container
         simliWidgetContainer.appendChild(simliWidget);
