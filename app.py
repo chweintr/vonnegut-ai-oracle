@@ -153,21 +153,17 @@ def get_text(text_name):
 
 @app.route('/api/simli-token', methods=['POST'])
 def get_simli_token():
-    """Generate a Simli session token using the new /auto/token endpoint."""
+    """Generate a Simli session token using createE2ESessionToken endpoint."""
     if not SIMLI_API_KEY:
         return jsonify({"error": "Simli API key not configured"}), 500
 
     try:
+        # Use the correct endpoint as per Simli docs
         response = requests.post(
-            "https://api.simli.ai/auto/token",
+            "https://api.simli.ai/createE2ESessionToken",
             headers={"Content-Type": "application/json"},
             json={
-                "simliAPIKey": SIMLI_API_KEY,
-                "expiryStamp": -1,
-                "llmAPIKey": "",
-                "ttsAPIKey": "",
-                "originAllowList": [],
-                "createTranscript": False
+                "simliAPIKey": SIMLI_API_KEY
             }
         )
         response.raise_for_status()
