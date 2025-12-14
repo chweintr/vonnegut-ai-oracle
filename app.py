@@ -181,6 +181,23 @@ def get_simli_token():
         return jsonify({"error": str(e)}), 500
 
 
+@app.route('/api/test-env')
+def test_env():
+    """Test endpoint to verify environment variables are loaded."""
+    return jsonify({
+        "simli_api_key_set": bool(SIMLI_API_KEY and SIMLI_API_KEY != "your_simli_api_key_here"),
+        "simli_agent_id_set": bool(SIMLI_AGENT_ID),
+        "simli_face_id_set": bool(SIMLI_FACE_ID and SIMLI_FACE_ID != "your_simli_face_id_here"),
+        "livekit_url": LIVEKIT_URL[:30] + "..." if LIVEKIT_URL and len(LIVEKIT_URL) > 30 else LIVEKIT_URL,
+        "livekit_url_format_ok": LIVEKIT_URL.startswith("wss://") if LIVEKIT_URL else False,
+        "livekit_api_key_set": bool(LIVEKIT_API_KEY),
+        "livekit_api_secret_set": bool(LIVEKIT_API_SECRET),
+        "openai_key_set": bool(OPENAI_API_KEY),
+        "elevenlabs_key_set": bool(ELEVENLABS_API_KEY),
+        "livekit_sdk_loaded": livekit_api is not None,
+    })
+
+
 @app.route('/api/livekit-token', methods=['POST'])
 def get_livekit_token():
     """Generate a LiveKit token for the user to join a room."""
