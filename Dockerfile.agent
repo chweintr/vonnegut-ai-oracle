@@ -1,0 +1,30 @@
+# Dockerfile for Vonnebot LiveKit Agent
+# Deploy this as a separate Railway service
+
+FROM python:3.11-slim
+
+# Set working directory
+WORKDIR /app
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y \
+    build-essential \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy requirements first for better caching
+COPY requirements-agent.txt .
+
+# Install Python dependencies
+RUN pip install --no-cache-dir -r requirements-agent.txt
+
+# Copy agent code and data
+COPY vonnebot_agent.py .
+COPY prompts_base_prompt.txt .
+COPY data/ ./data/
+
+# Set environment variable for Hugging Face cache (Railway-specific fix)
+ENV HF_HOME=/tmp/huggingface
+
+# Run the agent in production mode
+# "start" mode connects to LiveKit and waits for rooms
+CMD ["python", "vonnebot_agent.py", "start"]
