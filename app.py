@@ -178,7 +178,8 @@ def get_simli_token():
         print(f"Simli response keys: {data.keys()}")
         print(f"Simli response: {data}")
 
-        token = data.get("token") or data.get("sessionToken")
+        # Simli returns the token as "session_token"
+        token = data.get("session_token") or data.get("token") or data.get("sessionToken")
         if not token:
             return jsonify({"error": f"No token in Simli response. Got: {data}"}), 500
 
