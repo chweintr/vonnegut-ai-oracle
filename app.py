@@ -158,17 +158,20 @@ def get_simli_token():
         return jsonify({"error": "Simli API key not configured"}), 500
 
     try:
+        # Simli expects the API key in the Authorization header; putting it in the
+        # JSON body can trigger 401 errors about expired/invalid session tokens.
         response = requests.post(
             "https://api.simli.ai/auto/token",
-            headers={"Content-Type": "application/json"},
+            headers={
+                "Content-Type": "application/json",
+                "Authorization": f"Bearer {SIMLI_API_KEY}",
+            },
             json={
-                "simliAPIKey": SIMLI_API_KEY,
-                "expiryStamp": -1,
-                "llmAPIKey": "",
-                "ttsAPIKey": "",
+                "expiryStamp": -1,  # let Simli decide expiry; -1 = default
                 "originAllowList": [],
-                "createTranscript": False
-            }
+                "createTranscript": False,
+            },
+            timeout=10,
         )
         response.raise_for_status()
         data = response.json()
