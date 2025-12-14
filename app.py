@@ -159,14 +159,15 @@ def get_simli_token():
 
     try:
         # Create session token via Simli Auto API
+        # Pass ElevenLabs key for TTS - LLM key might be in agent config
         response = requests.post(
             "https://api.simli.ai/auto/token",
             headers={"Content-Type": "application/json"},
             json={
                 "simliAPIKey": SIMLI_API_KEY,
                 "expiryStamp": -1,
-                "llmAPIKey": "",
-                "ttsAPIKey": "",
+                "llmAPIKey": OPENAI_API_KEY or "",
+                "ttsAPIKey": ELEVENLABS_API_KEY or "",
                 "originAllowList": [],
                 "createTranscript": False
             }
