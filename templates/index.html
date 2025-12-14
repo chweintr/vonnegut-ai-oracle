@@ -1353,15 +1353,13 @@
           throw new Error(tokenData.error);
         }
 
-        console.log('Got Simli token, creating widget');
+        console.log('Got Simli token, creating widget with agentId:', tokenData.agentId);
 
         // Create the Simli widget element
+        // Only token and agentid are required - faceId is configured in the agent on Simli dashboard
         simliWidget = document.createElement('simli-widget');
         simliWidget.setAttribute('token', tokenData.token);
         simliWidget.setAttribute('agentid', tokenData.agentId);
-        if (tokenData.faceId) {
-          simliWidget.setAttribute('faceid', tokenData.faceId);
-        }
         // Use relative position so it flows in document
         simliWidget.setAttribute('position', 'relative');
 

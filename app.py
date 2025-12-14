@@ -153,26 +153,37 @@ def get_text(text_name):
 
 @app.route('/api/simli-token', methods=['POST'])
 def get_simli_token():
-    """Generate a Simli session token using createE2ESessionToken endpoint."""
+    """Generate a Simli session token using /auto/token endpoint."""
     if not SIMLI_API_KEY:
         return jsonify({"error": "Simli API key not configured"}), 500
 
     try:
-        # Use the correct endpoint as per Simli docs
+        # Create session token via Simli Auto API
         response = requests.post(
-            "https://api.simli.ai/createE2ESessionToken",
+            "https://api.simli.ai/auto/token",
             headers={"Content-Type": "application/json"},
             json={
-                "simliAPIKey": SIMLI_API_KEY
+                "simliAPIKey": SIMLI_API_KEY,
+                "expiryStamp": -1,
+                "llmAPIKey": "",
+                "ttsAPIKey": "",
+                "originAllowList": [],
+                "createTranscript": False
             }
         )
         response.raise_for_status()
         data = response.json()
+
+        # Return token and agentId (faceId is configured in the agent on Simli dashboard)
         return jsonify({
             "token": data.get("token") or data.get("sessionToken"),
-            "agentId": SIMLI_AGENT_ID,
-            "faceId": SIMLI_FACE_ID
+            "agentId": SIMLI_AGENT_ID
         })
+    except requests.exceptions.HTTPError as e:
+        # Log the actual error response from Simli
+        error_detail = e.response.text if e.response else str(e)
+        print(f"Simli API error: {error_detail}")
+        return jsonify({"error": f"Simli API error: {error_detail}"}), 500
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
