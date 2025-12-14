@@ -4,8 +4,8 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Vonnebot</title>
-  <!-- Simli Widget SDK -->
-  <script src="https://app.simli.com/simli-widget/index.js" defer></script>
+  <!-- LiveKit Web SDK (for voice avatar) -->
+  <script src="https://unpkg.com/livekit-client@2.0.0/dist/livekit-client.umd.min.js"></script>
   <style>
     @import url('https://fonts.googleapis.com/css2?family=Special+Elite&family=Libre+Baskerville:ital,wght@0,400;0,700;1,400&family=Caveat:wght@400;700&display=swap');
 
@@ -294,11 +294,10 @@
     }
 
     /*
-     * SIMLI WIDGET CONTAINER
-     * Widget renders: dotted face + Start button (bottom-right of face)
-     * We clip to 200px circle but position a proxy button to click the hidden Start.
+     * LIVEKIT AVATAR VIDEO
+     * Shows the Simli avatar stream from LiveKit room
      */
-    #simliWidgetContainer {
+    #livekitVideoContainer {
       position: absolute;
       top: 0;
       left: 0;
@@ -307,91 +306,50 @@
       display: none;
       z-index: 5;
       border-radius: 50%;
-      overflow: hidden; /* Clip to circle */
+      overflow: hidden;
+      background: #000;
     }
 
-    #simliWidgetContainer.active {
+    #livekitVideoContainer.active {
       display: block;
     }
 
-    #simliWidgetContainer simli-widget {
-      display: block;
-      width: 300px;  /* Larger so we can position the face part */
-      height: 300px;
-      /* Shift left and up so face centers in our 200px window */
-      margin-left: -50px;
-      margin-top: -20px;
+    #livekitVideoContainer video {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
     }
 
-    /* Proxy Start button - positioned where Simli's Start button would be */
-    #proxyStartBtn {
+    /* Connect button for Talk mode */
+    #connectBtn {
       position: absolute;
-      bottom: -50px;  /* Below the clipped circle */
-      right: -30px;   /* To the right */
-      width: 80px;
-      height: 40px;
+      bottom: -40px;
+      left: 50%;
+      transform: translateX(-50%);
+      padding: 0.5rem 1.2rem;
       z-index: 50;
       background: var(--rust);
       color: white;
       border: none;
       border-radius: 4px;
       font-family: 'Special Elite', monospace;
-      font-size: 0.9rem;
+      font-size: 0.85rem;
       cursor: pointer;
       display: none;
-    }
-
-    #proxyStartBtn.active {
-      display: block;
-    }
-
-    #proxyStartBtn:hover {
-      background: var(--ink);
-    }
-
-    /* START button overlays the avatar circle */
-    .connect-overlay {
-      position: absolute !important;
-      top: 0 !important;
-      left: 0 !important;
-      width: 200px !important;
-      height: 200px !important;
-      z-index: 100 !important; /* Force on top of everything */
-      display: none;
-      cursor: pointer;
-      background: rgba(0,0,0,0.5);
-      border: 3px solid var(--rust);
-      border-radius: 50%;
       transition: background 0.2s;
     }
 
-    .connect-overlay.active {
-      display: flex;
-      align-items: center;
-      justify-content: center;
+    #connectBtn.active {
+      display: block;
     }
 
-    .connect-overlay .connect-label {
-      font-family: 'Special Elite', monospace;
-      font-size: 1.2rem;
-      font-weight: bold;
-      padding: 0.8rem 1.5rem;
-      background: var(--rust);
-      color: white;
-      border-radius: 4px;
-      text-transform: uppercase;
-      letter-spacing: 0.1em;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.3);
-    }
-
-    .connect-overlay:hover {
-      background: rgba(0,0,0,0.6);
-      border-color: var(--ink);
-    }
-
-    .connect-overlay:hover .connect-label {
+    #connectBtn:hover {
       background: var(--ink);
-      transform: scale(1.1);
+    }
+
+    #connectBtn:disabled {
+      background: var(--pencil);
+      cursor: not-allowed;
     }
 
     .avatar-container img {
@@ -902,11 +860,13 @@
             ></video>
           </div>
 
-          <!-- Layer 2: Simli widget container (clipped to 200px circle) -->
-          <div id="simliWidgetContainer"></div>
+          <!-- Layer 2: LiveKit video container for avatar stream -->
+          <div id="livekitVideoContainer">
+            <video id="avatarVideo" autoplay playsinline></video>
+          </div>
 
-          <!-- Layer 3: Our styled Start button that triggers Simli's hidden one -->
-          <button id="proxyStartBtn">Start</button>
+          <!-- Layer 3: Connect button for Talk mode -->
+          <button id="connectBtn">Connect</button>
         </div>
 
         <span class="avatar-label" id="avatarLabel">Kurt is listening...</span>
@@ -982,16 +942,17 @@
     const avatarLabel = document.getElementById('avatarLabel');
     const idleVideo = document.getElementById('idleVideo');
     const avatarContainer = document.getElementById('avatarContainer');
-    const simliWidgetContainer = document.getElementById('simliWidgetContainer');
-    const proxyStartBtn = document.getElementById('proxyStartBtn');
+    const livekitVideoContainer = document.getElementById('livekitVideoContainer');
+    const avatarVideo = document.getElementById('avatarVideo');
+    const connectBtn = document.getElementById('connectBtn');
 
     // ========== STATE ==========
     let chatHistory = [];
     let currentPassageIndex = 0;
     let currentParagraphs = [];
     let currentMode = 'text'; // 'text' or 'talk'
-    let simliWidget = null;
-    let simliConnected = false;
+    let livekitRoom = null;
+    let livekitConnected = false;
     let audioQueue = [];
     let isPlayingAudio = false;
 
@@ -1385,163 +1346,110 @@
       currentMode = newMode;
 
       if (newMode === 'talk') {
-        // Switch to Talk mode
-        avatarLabel.textContent = 'Setting up...';
-
-        // 1. Initialize Simli widget if not already done
-        if (!simliWidget) {
-          await initSimliWidget();
-        }
-        // 2. Show the Simli widget container (clipped to circle)
-        simliWidgetContainer.classList.add('active');
-        // 3. Show our proxy Start button
-        proxyStartBtn.classList.add('active');
-        avatarLabel.textContent = 'Click Start to talk';
+        // Switch to Talk mode - show Connect button
+        avatarLabel.textContent = 'Click Connect to talk';
+        connectBtn.classList.add('active');
         console.log('Talk mode activated');
-
       } else {
-        // Switch to Text mode - hide everything Simli related
-        proxyStartBtn.classList.remove('active');
-        simliWidgetContainer.classList.remove('active');
-        simliConnected = false;
+        // Switch to Text mode - disconnect and hide
+        if (livekitConnected && livekitRoom) {
+          await livekitRoom.disconnect();
+          livekitRoom = null;
+          livekitConnected = false;
+        }
+        connectBtn.classList.remove('active');
+        livekitVideoContainer.classList.remove('active');
         avatarLabel.textContent = 'Kurt is listening...';
       }
     });
 
-    // Initialize Simli widget with overlay mode
-    async function initSimliWidget() {
-      try {
-        avatarLabel.textContent = 'Setting up voice...';
+    // Connect button handler - connects to LiveKit room
+    connectBtn.addEventListener('click', async () => {
+      if (livekitConnected) {
+        // Disconnect
+        if (livekitRoom) {
+          await livekitRoom.disconnect();
+          livekitRoom = null;
+        }
+        livekitConnected = false;
+        livekitVideoContainer.classList.remove('active');
+        connectBtn.textContent = 'Connect';
+        avatarLabel.textContent = 'Click Connect to talk';
+        return;
+      }
 
-        const tokenRes = await fetch('/api/simli-token', { method: 'POST' });
+      // Connect to LiveKit
+      connectBtn.disabled = true;
+      connectBtn.textContent = 'Connecting...';
+      avatarLabel.textContent = 'Connecting to Kurt...';
+
+      try {
+        // Get LiveKit token from backend
+        const tokenRes = await fetch('/api/livekit-token', { method: 'POST' });
         const tokenData = await tokenRes.json();
 
         if (tokenData.error) {
           throw new Error(tokenData.error);
         }
 
-        // Create widget - position relative, no overlay
-        simliWidget = document.createElement('simli-widget');
-        simliWidget.setAttribute('token', tokenData.token);
-        simliWidget.setAttribute('agentid', tokenData.agentId);
-        if (tokenData.faceId) {
-          simliWidget.setAttribute('faceid', tokenData.faceId);
-        }
-        simliWidget.setAttribute('position', 'relative');
+        console.log('Got LiveKit token, connecting to room:', tokenData.room);
 
-        simliWidgetContainer.appendChild(simliWidget);
+        // Create LiveKit room and connect
+        const { Room, RoomEvent, Track } = LivekitClient;
+        livekitRoom = new Room();
 
-        avatarLabel.textContent = 'Click to talk with Kurt';
-        console.log('Simli widget initialized in overlay mode');
+        // Handle track subscriptions (video from agent)
+        livekitRoom.on(RoomEvent.TrackSubscribed, (track, publication, participant) => {
+          console.log('Track subscribed:', track.kind, 'from', participant.identity);
+          if (track.kind === Track.Kind.Video) {
+            // Attach video track to our video element
+            track.attach(avatarVideo);
+            livekitVideoContainer.classList.add('active');
+            avatarLabel.textContent = 'Speaking with Kurt...';
+          }
+          if (track.kind === Track.Kind.Audio) {
+            // Attach audio track (creates hidden audio element)
+            const audioElement = track.attach();
+            document.body.appendChild(audioElement);
+          }
+        });
+
+        // Handle track unsubscriptions
+        livekitRoom.on(RoomEvent.TrackUnsubscribed, (track) => {
+          console.log('Track unsubscribed:', track.kind);
+          track.detach();
+        });
+
+        // Handle disconnection
+        livekitRoom.on(RoomEvent.Disconnected, () => {
+          console.log('Disconnected from LiveKit room');
+          livekitConnected = false;
+          livekitVideoContainer.classList.remove('active');
+          connectBtn.textContent = 'Connect';
+          connectBtn.disabled = false;
+          avatarLabel.textContent = 'Click Connect to talk';
+        });
+
+        // Connect to the room
+        await livekitRoom.connect(tokenData.url, tokenData.token);
+        console.log('Connected to LiveKit room');
+
+        // Enable microphone for voice input
+        await livekitRoom.localParticipant.setMicrophoneEnabled(true);
+        console.log('Microphone enabled');
+
+        livekitConnected = true;
+        connectBtn.textContent = 'Disconnect';
+        connectBtn.disabled = false;
+        avatarLabel.textContent = 'Waiting for Kurt...';
 
       } catch (err) {
-        console.error('Simli setup error:', err);
-        avatarLabel.textContent = 'Voice setup failed. So it goes.';
-      }
-    }
-
-    // Click handler for proxy Start button
-    // Clicks Simli's hidden native Start button
-    proxyStartBtn.addEventListener('click', async (e) => {
-      e.preventDefault();
-      e.stopPropagation();
-
-      avatarLabel.textContent = 'Connecting...';
-
-      // Try to trigger Simli's native Start button
-      const triggered = await triggerSimliStart();
-
-      if (triggered) {
-        // Hide our Start button
-        proxyStartBtn.classList.remove('active');
-        avatarLabel.textContent = 'Speaking with Kurt...';
-        simliConnected = true;
-      } else {
-        avatarLabel.textContent = 'Could not connect. Try again.';
+        console.error('LiveKit connection error:', err);
+        avatarLabel.textContent = 'Connection failed. So it goes.';
+        connectBtn.textContent = 'Connect';
+        connectBtn.disabled = false;
       }
     });
-
-    // Try various methods to find and click Simli's internal start button
-    // Returns true if we found something to click
-    async function triggerSimliStart() {
-      // Wait a moment for widget to fully render
-      await new Promise(resolve => setTimeout(resolve, 300));
-
-      // Method 1: Look for buttons directly in the widget
-      let buttons = simliWidget.querySelectorAll('button');
-      console.log('Method 1 - Direct buttons found:', buttons.length);
-      if (buttons.length > 0) {
-        buttons[0].click();
-        console.log('Clicked button via Method 1');
-        return true;
-      }
-
-      // Method 2: Look in the container for any buttons (widget might append outside itself)
-      buttons = simliWidgetContainer.querySelectorAll('button');
-      console.log('Method 2 - Container buttons found:', buttons.length);
-      if (buttons.length > 0) {
-        buttons[0].click();
-        console.log('Clicked button via Method 2');
-        return true;
-      }
-
-      // Method 3: Try to access shadow DOM if present
-      if (simliWidget.shadowRoot) {
-        buttons = simliWidget.shadowRoot.querySelectorAll('button');
-        console.log('Method 3 - Shadow DOM buttons found:', buttons.length);
-        if (buttons.length > 0) {
-          buttons[0].click();
-          console.log('Clicked button via Method 3 (shadow DOM)');
-          return true;
-        }
-      }
-
-      // Method 4: Look for divs or spans that might be styled as buttons
-      const clickables = simliWidgetContainer.querySelectorAll('[onclick], [role="button"], .button, .btn, div[class*="button"], div[class*="start"]');
-      console.log('Method 4 - Clickable elements found:', clickables.length);
-      if (clickables.length > 0) {
-        clickables[0].click();
-        console.log('Clicked element via Method 4');
-        return true;
-      }
-
-      // Method 5: Look inside iframes
-      const iframes = simliWidgetContainer.querySelectorAll('iframe');
-      console.log('Method 5 - Iframes found:', iframes.length);
-      for (const iframe of iframes) {
-        try {
-          const iframeDoc = iframe.contentDocument || iframe.contentWindow.document;
-          buttons = iframeDoc.querySelectorAll('button');
-          console.log('Method 5 - Buttons in iframe:', buttons.length);
-          if (buttons.length > 0) {
-            buttons[0].click();
-            console.log('Clicked button via Method 5 (iframe)');
-            return true;
-          }
-        } catch (err) {
-          console.log('Cannot access iframe (cross-origin):', err.message);
-        }
-      }
-
-      // Method 6: Dispatch click at the position where Simli's button would be
-      // The button is typically below the face, around y=210-240 from top of widget
-      console.log('Method 6 - Simulating click at button position');
-      const rect = simliWidgetContainer.getBoundingClientRect();
-      const clickX = rect.left + rect.width / 2;
-      const clickY = rect.top + 220; // Below the face
-
-      const clickEvent = new MouseEvent('click', {
-        bubbles: true,
-        cancelable: true,
-        view: window,
-        clientX: clickX,
-        clientY: clickY
-      });
-      document.elementFromPoint(clickX, clickY)?.dispatchEvent(clickEvent);
-
-      console.log('All methods attempted');
-      return true;
-    }
 
     // ========== SCROLL TRACKING ==========
     const pageContainer = document.querySelector('.page-container');
