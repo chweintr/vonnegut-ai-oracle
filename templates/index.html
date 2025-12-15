@@ -335,7 +335,7 @@
       justify-content: center;
     }
 
-    /* Placeholder video (asterisk) shown before Simli loads */
+    /* Placeholder video shown ON TOP of Simli widget until conversation starts */
     #simliPlaceholderVideo {
       width: 100%;
       height: 100%;
@@ -343,7 +343,8 @@
       position: absolute;
       top: 0;
       left: 0;
-      z-index: 1;
+      z-index: 10; /* Higher than Simli widget to cover the green */
+      pointer-events: none; /* Allow clicks to pass through to widget below */
     }
 
     #simliPlaceholderVideo.hidden {
