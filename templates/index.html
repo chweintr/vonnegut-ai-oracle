@@ -319,12 +319,24 @@
     }
 
     /*
-     * Simple container for Simli widget - let it render naturally
+     * Circular container for Simli widget - matches idle video size
      */
     #simliWidgetContainer {
+      width: 200px;
+      height: 200px;
+      border-radius: 50%;
+      overflow: hidden;
+      border: 2px solid var(--pencil);
+      background: var(--cream);
       display: flex;
-      flex-direction: column;
       align-items: center;
+      justify-content: center;
+    }
+
+    /* Scale down Simli widget to fit in circle */
+    #simliWidgetContainer simli-widget {
+      transform: scale(0.5);
+      transform-origin: center center;
     }
 
     /* Breathing animation behind avatar - only when no video playing */
