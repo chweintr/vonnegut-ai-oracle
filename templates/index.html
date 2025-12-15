@@ -319,104 +319,12 @@
     }
 
     /*
-     * Container that clips the widget to a circle
-     * The widget renders larger internally, we just show a circular window
+     * Simple container for Simli widget - let it render naturally
      */
     #simliWidgetContainer {
-      width: 200px;
-      height: 200px;
-      border-radius: 50%;
-      overflow: hidden;
-      border: 2px solid var(--pencil);
-      background: #000;
-      position: relative;
       display: flex;
+      flex-direction: column;
       align-items: center;
-      justify-content: center;
-    }
-
-    /* Placeholder gif shown ON TOP of Simli widget until conversation starts */
-    #simliPlaceholder {
-      width: 100%;
-      height: 100%;
-      object-fit: cover;
-      position: absolute;
-      top: 0;
-      left: 0;
-      z-index: 10; /* Higher than Simli widget to cover the green */
-      pointer-events: none; /* Allow clicks to pass through to widget below */
-    }
-
-    #simliPlaceholder.hidden {
-      display: none;
-    }
-
-    /* Loading message shown while Simli connects */
-    .simli-loading-msg {
-      position: absolute;
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%, -50%);
-      z-index: 2; /* Above Simli (1) but below placeholder (10) */
-      font-family: 'Caveat', cursive;
-      font-size: 1.1rem;
-      color: var(--cream);
-      text-align: center;
-      padding: 1rem;
-      opacity: 0;
-      transition: opacity 0.3s;
-      pointer-events: none;
-    }
-
-    .simli-loading-msg.visible {
-      opacity: 1;
-    }
-
-    /*
-     * Let Simli widget fill the container naturally
-     */
-    #simliWidgetContainer simli-widget {
-      display: block;
-      width: 100%;
-      height: 100%;
-      z-index: 1; /* Base layer for Simli */
-    }
-
-    /*
-     * Control button - simple text button for Start/Stop
-     */
-    .simli-control-btn {
-      font-family: 'Special Elite', monospace;
-      font-size: 0.8rem;
-      text-transform: uppercase;
-      letter-spacing: 0.1em;
-      padding: 0.5rem 1.2rem;
-      background: var(--ink);
-      color: var(--cream);
-      border: none;
-      border-radius: 2px;
-      cursor: pointer;
-      transition: all 0.2s;
-      margin-top: 0.5rem;
-    }
-
-    .simli-control-btn:hover {
-      background: var(--rust);
-      transform: translateY(-1px);
-    }
-
-    .simli-control-btn:disabled {
-      opacity: 0.5;
-      cursor: not-allowed;
-      transform: none;
-    }
-
-    .simli-control-btn.active {
-      background: var(--rust);
-    }
-
-    .simli-control-btn.active:hover {
-      background: var(--ink);
     }
 
     /* Breathing animation behind avatar - only when no video playing */
@@ -913,23 +821,9 @@
           </div>
         </div>
 
-        <!-- TALK MODE: Simli widget constrained to circle with control button -->
+        <!-- TALK MODE: Simli widget renders naturally -->
         <div class="simli-wrapper" id="simliWrapper">
-          <div id="simliWidgetContainer">
-            <!-- Placeholder gif shown until Simli avatar loads -->
-            <img
-              id="simliPlaceholder"
-              src="/static/vonnegut_asterisk.gif"
-              alt="Loading..."
-            />
-            <!-- Loading message shown while connecting -->
-            <div class="simli-loading-msg" id="simliLoadingMsg">
-              Kurt is coming<br/>to his senses...
-            </div>
-          </div>
-          <button class="simli-control-btn" id="simliControlBtn">
-            <span class="simli-control-label" id="simliControlLabel">Start</span>
-          </button>
+          <div id="simliWidgetContainer"></div>
         </div>
 
         <span class="avatar-label" id="avatarLabel">Kurt is listening...</span>
@@ -1007,10 +901,6 @@
     const idleWrapper = document.getElementById('idleWrapper');
     const simliWrapper = document.getElementById('simliWrapper');
     const simliWidgetContainer = document.getElementById('simliWidgetContainer');
-    const simliPlaceholder = document.getElementById('simliPlaceholder');
-    const simliLoadingMsg = document.getElementById('simliLoadingMsg');
-    const simliControlBtn = document.getElementById('simliControlBtn');
-    const simliControlLabel = document.getElementById('simliControlLabel');
 
     // ========== STATE ==========
     let chatHistory = [];
@@ -1019,7 +909,6 @@
     let currentMode = 'text'; // 'text' or 'talk'
     let simliWidget = null;
     let simliInitialized = false;
-    let simliIsRunning = false; // Track if conversation is active
     let audioQueue = [];
     let isPlayingAudio = false;
 
@@ -1433,12 +1322,10 @@
       }
     });
 
-    // Initialize Simli widget
+    // Initialize Simli widget - keep it simple, let Simli handle its own UI
     async function initSimliWidget() {
       try {
         avatarLabel.textContent = 'Loading voice mode...';
-        simliControlLabel.textContent = 'Loading';
-        simliControlBtn.disabled = true;
 
         // Get token from backend
         const tokenRes = await fetch('/api/simli-token', { method: 'POST' });
@@ -1451,155 +1338,21 @@
         console.log('Got Simli token, creating widget with agentId:', tokenData.agentId);
 
         // Create the Simli widget element
-        // Only token and agentid are required - faceId is configured in the agent on Simli dashboard
         simliWidget = document.createElement('simli-widget');
         simliWidget.setAttribute('token', tokenData.token);
         simliWidget.setAttribute('agentid', tokenData.agentId);
-        // Use relative position so it flows in document
-        simliWidget.setAttribute('position', 'relative');
-        // Use transparent pixel - our overlay gif will cover until conversation starts
-        simliWidget.setAttribute('customimage', 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7');
 
-        // Add to container
+        // Add to container - let Simli render its own Start button and video
         simliWidgetContainer.appendChild(simliWidget);
 
-        // Debug: log the widget element
-        console.log('Simli widget element:', simliWidget);
-        console.log('Simli widget container children:', simliWidgetContainer.children);
-
         simliInitialized = true;
-        avatarLabel.textContent = 'Click to talk with Kurt';
-        simliControlLabel.textContent = 'Start';
-        simliControlBtn.disabled = false;
+        avatarLabel.textContent = 'Click Start to talk with Kurt';
         console.log('Simli widget initialized');
-
-        // Setup proxy button click handler
-        setupSimliControlButton();
 
       } catch (err) {
         console.error('Simli setup error:', err);
         avatarLabel.textContent = 'Voice setup failed. So it goes.';
-        simliControlLabel.textContent = 'Failed';
-        simliControlBtn.disabled = true;
       }
-    }
-
-    // Find and click Simli's internal button (Start or Stop)
-    function findAndClickSimliButton() {
-      // Try shadow DOM first
-      if (simliWidget && simliWidget.shadowRoot) {
-        console.log('Shadow root contents:', simliWidget.shadowRoot.innerHTML.substring(0, 500));
-        const shadowBtn = simliWidget.shadowRoot.querySelector('button');
-        if (shadowBtn) {
-          console.log('Found button in shadow DOM:', shadowBtn.textContent || shadowBtn);
-          shadowBtn.click();
-          // Check for video after a delay
-          setTimeout(() => {
-            const video = simliWidget.shadowRoot.querySelector('video');
-            console.log('Video element in shadow DOM:', video);
-            if (video) {
-              console.log('Video src:', video.src, 'readyState:', video.readyState);
-            }
-          }, 2000);
-          return true;
-        }
-      }
-
-      // Try regular DOM within widget
-      if (simliWidget) {
-        const regularBtn = simliWidget.querySelector('button');
-        if (regularBtn) {
-          console.log('Found button in regular DOM:', regularBtn.textContent || regularBtn);
-          regularBtn.click();
-          return true;
-        }
-      }
-
-      // Try finding any clickable element in the container (excluding our control button)
-      const anyButton = simliWidgetContainer.querySelector('button:not(.simli-control-btn), [role="button"], .start-button, .stop-button, [class*="start"], [class*="stop"]');
-      if (anyButton) {
-        console.log('Found alternative button:', anyButton);
-        anyButton.click();
-        return true;
-      }
-
-      // If widget has start/stop methods, call them directly
-      if (simliWidget) {
-        if (!simliIsRunning && typeof simliWidget.start === 'function') {
-          console.log('Calling widget.start() method');
-          simliWidget.start();
-          return true;
-        } else if (simliIsRunning && typeof simliWidget.stop === 'function') {
-          console.log('Calling widget.stop() method');
-          simliWidget.stop();
-          return true;
-        }
-      }
-
-      console.log('Could not find Simli button');
-      return false;
-    }
-
-    // Setup control button to toggle Start/Stop
-    function setupSimliControlButton() {
-      simliControlBtn.addEventListener('click', () => {
-        const action = simliIsRunning ? 'Stop' : 'Start';
-        console.log(`Control button clicked - attempting to ${action}...`);
-
-        // Try immediately
-        if (findAndClickSimliButton()) {
-          if (simliIsRunning) {
-            handleSimliStopped();
-          } else {
-            handleSimliStarted();
-          }
-        } else {
-          // Retry after a short delay in case widget is still loading
-          setTimeout(() => {
-            if (findAndClickSimliButton()) {
-              if (simliIsRunning) {
-                handleSimliStopped();
-              } else {
-                handleSimliStarted();
-              }
-            } else {
-              avatarLabel.textContent = `Could not ${action.toLowerCase()}. Try again.`;
-            }
-          }, 500);
-        }
-      });
-    }
-
-    // Handle successful Simli start
-    function handleSimliStarted() {
-      simliIsRunning = true;
-      simliControlBtn.classList.add('active');
-      simliControlLabel.textContent = 'Stop';
-      avatarLabel.textContent = 'Connecting...';
-
-      // Hide placeholder gif, show loading message
-      simliPlaceholder.classList.add('hidden');
-      simliLoadingMsg.classList.add('visible');
-
-      // After a delay, hide loading message (Simli should be visible by then)
-      setTimeout(() => {
-        simliLoadingMsg.classList.remove('visible');
-        if (simliIsRunning) {
-          avatarLabel.textContent = 'Speak to Kurt...';
-        }
-      }, 3000);
-    }
-
-    // Handle Simli stop
-    function handleSimliStopped() {
-      simliIsRunning = false;
-      simliControlBtn.classList.remove('active');
-      simliControlLabel.textContent = 'Start';
-      avatarLabel.textContent = 'Click to talk with Kurt';
-
-      // Hide loading message, show placeholder gif again
-      simliLoadingMsg.classList.remove('visible');
-      simliPlaceholder.classList.remove('hidden');
     }
 
     // ========== SCROLL TRACKING ==========
