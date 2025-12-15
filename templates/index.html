@@ -349,31 +349,50 @@
     }
 
     /*
-     * Start button - positioned below the circular container
-     * We'll create our own button that triggers Simli's internal one
+     * Asterisk button - video with Start/Stop label
      */
-    .simli-start-btn {
+    .simli-control-btn {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.3rem;
+      cursor: pointer;
+      margin-top: 0.5rem;
+      background: none;
+      border: none;
+      padding: 0;
+    }
+
+    .simli-control-btn:hover .asterisk-video {
+      transform: scale(1.1);
+    }
+
+    .simli-control-btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    .simli-control-btn:disabled .asterisk-video {
+      transform: none;
+    }
+
+    .asterisk-video {
+      width: 50px;
+      height: 50px;
+      object-fit: contain;
+      transition: transform 0.2s;
+    }
+
+    .simli-control-label {
       font-family: 'Special Elite', monospace;
-      font-size: 0.8rem;
+      font-size: 0.7rem;
       text-transform: uppercase;
       letter-spacing: 0.1em;
-      padding: 0.5rem 1.2rem;
-      background: var(--rust);
-      color: var(--cream);
-      border: none;
-      border-radius: 2px;
-      cursor: pointer;
-      transition: all 0.2s;
-      margin-top: 0.5rem;
+      color: var(--pencil);
     }
 
-    .simli-start-btn:hover {
-      background: var(--ink);
-      transform: translateY(-1px);
-    }
-
-    .simli-start-btn.hidden {
-      display: none;
+    .simli-control-btn.active .simli-control-label {
+      color: var(--rust);
     }
 
     /* Breathing animation behind avatar - only when no video playing */
@@ -870,10 +889,13 @@
           </div>
         </div>
 
-        <!-- TALK MODE: Simli widget constrained to circle with proxy Start button -->
+        <!-- TALK MODE: Simli widget constrained to circle with asterisk control button -->
         <div class="simli-wrapper" id="simliWrapper">
           <div id="simliWidgetContainer"></div>
-          <button class="simli-start-btn" id="simliStartBtn">Start Conversation</button>
+          <button class="simli-control-btn" id="simliControlBtn">
+            <video class="asterisk-video" src="/static/vonnegut_asterisk.mp4" autoplay loop muted playsinline></video>
+            <span class="simli-control-label" id="simliControlLabel">Start</span>
+          </button>
         </div>
 
         <span class="avatar-label" id="avatarLabel">Kurt is listening...</span>
@@ -951,7 +973,8 @@
     const idleWrapper = document.getElementById('idleWrapper');
     const simliWrapper = document.getElementById('simliWrapper');
     const simliWidgetContainer = document.getElementById('simliWidgetContainer');
-    const simliStartBtn = document.getElementById('simliStartBtn');
+    const simliControlBtn = document.getElementById('simliControlBtn');
+    const simliControlLabel = document.getElementById('simliControlLabel');
 
     // ========== STATE ==========
     let chatHistory = [];
@@ -960,6 +983,7 @@
     let currentMode = 'text'; // 'text' or 'talk'
     let simliWidget = null;
     let simliInitialized = false;
+    let simliIsRunning = false; // Track if conversation is active
     let audioQueue = [];
     let isPlayingAudio = false;
 
@@ -1377,8 +1401,8 @@
     async function initSimliWidget() {
       try {
         avatarLabel.textContent = 'Loading voice mode...';
-        simliStartBtn.textContent = 'Loading...';
-        simliStartBtn.disabled = true;
+        simliControlLabel.textContent = 'Loading';
+        simliControlBtn.disabled = true;
 
         // Get token from backend
         const tokenRes = await fetch('/api/simli-token', { method: 'POST' });
@@ -1404,79 +1428,93 @@
         simliWidgetContainer.appendChild(simliWidget);
 
         simliInitialized = true;
-        avatarLabel.textContent = 'Click Start to talk with Kurt';
-        simliStartBtn.textContent = 'Start Conversation';
-        simliStartBtn.disabled = false;
+        avatarLabel.textContent = 'Click asterisk to talk with Kurt';
+        simliControlLabel.textContent = 'Start';
+        simliControlBtn.disabled = false;
         console.log('Simli widget initialized');
 
         // Setup proxy button click handler
-        setupSimliProxyButton();
+        setupSimliControlButton();
 
       } catch (err) {
         console.error('Simli setup error:', err);
         avatarLabel.textContent = 'Voice setup failed. So it goes.';
-        simliStartBtn.textContent = 'Failed';
-        simliStartBtn.disabled = true;
+        simliControlLabel.textContent = 'Failed';
+        simliControlBtn.disabled = true;
       }
     }
 
-    // Setup proxy button to click Simli's internal Start button
-    function setupSimliProxyButton() {
-      simliStartBtn.addEventListener('click', () => {
-        console.log('Proxy Start button clicked, searching for Simli internal button...');
+    // Find and click Simli's internal button (Start or Stop)
+    function findAndClickSimliButton() {
+      // Try shadow DOM first
+      if (simliWidget && simliWidget.shadowRoot) {
+        const shadowBtn = simliWidget.shadowRoot.querySelector('button');
+        if (shadowBtn) {
+          console.log('Found button in shadow DOM:', shadowBtn.textContent || shadowBtn);
+          shadowBtn.click();
+          return true;
+        }
+      }
 
-        // Try to find and click Simli's internal start button
-        // The widget may use shadow DOM or regular DOM
-        const findAndClickStart = () => {
-          // Try shadow DOM first
-          if (simliWidget && simliWidget.shadowRoot) {
-            const shadowBtn = simliWidget.shadowRoot.querySelector('button');
-            if (shadowBtn) {
-              console.log('Found button in shadow DOM:', shadowBtn);
-              shadowBtn.click();
-              handleSimliStarted();
-              return true;
-            }
-          }
+      // Try regular DOM within widget
+      if (simliWidget) {
+        const regularBtn = simliWidget.querySelector('button');
+        if (regularBtn) {
+          console.log('Found button in regular DOM:', regularBtn.textContent || regularBtn);
+          regularBtn.click();
+          return true;
+        }
+      }
 
-          // Try regular DOM within widget
-          if (simliWidget) {
-            const regularBtn = simliWidget.querySelector('button');
-            if (regularBtn) {
-              console.log('Found button in regular DOM:', regularBtn);
-              regularBtn.click();
-              handleSimliStarted();
-              return true;
-            }
-          }
+      // Try finding any clickable element in the container (excluding our control button)
+      const anyButton = simliWidgetContainer.querySelector('button:not(.simli-control-btn), [role="button"], .start-button, .stop-button, [class*="start"], [class*="stop"]');
+      if (anyButton) {
+        console.log('Found alternative button:', anyButton);
+        anyButton.click();
+        return true;
+      }
 
-          // Try finding any clickable element in the container
-          const anyButton = simliWidgetContainer.querySelector('button, [role="button"], .start-button, [class*="start"]');
-          if (anyButton) {
-            console.log('Found alternative button:', anyButton);
-            anyButton.click();
-            handleSimliStarted();
-            return true;
-          }
+      // If widget has start/stop methods, call them directly
+      if (simliWidget) {
+        if (!simliIsRunning && typeof simliWidget.start === 'function') {
+          console.log('Calling widget.start() method');
+          simliWidget.start();
+          return true;
+        } else if (simliIsRunning && typeof simliWidget.stop === 'function') {
+          console.log('Calling widget.stop() method');
+          simliWidget.stop();
+          return true;
+        }
+      }
 
-          // If widget has a start method, call it directly
-          if (simliWidget && typeof simliWidget.start === 'function') {
-            console.log('Calling widget.start() method');
-            simliWidget.start();
-            handleSimliStarted();
-            return true;
-          }
+      console.log('Could not find Simli button');
+      return false;
+    }
 
-          console.log('Could not find Simli start button');
-          return false;
-        };
+    // Setup control button to toggle Start/Stop
+    function setupSimliControlButton() {
+      simliControlBtn.addEventListener('click', () => {
+        const action = simliIsRunning ? 'Stop' : 'Start';
+        console.log(`Control button clicked - attempting to ${action}...`);
 
         // Try immediately
-        if (!findAndClickStart()) {
+        if (findAndClickSimliButton()) {
+          if (simliIsRunning) {
+            handleSimliStopped();
+          } else {
+            handleSimliStarted();
+          }
+        } else {
           // Retry after a short delay in case widget is still loading
           setTimeout(() => {
-            if (!findAndClickStart()) {
-              avatarLabel.textContent = 'Could not start. Try again.';
+            if (findAndClickSimliButton()) {
+              if (simliIsRunning) {
+                handleSimliStopped();
+              } else {
+                handleSimliStarted();
+              }
+            } else {
+              avatarLabel.textContent = `Could not ${action.toLowerCase()}. Try again.`;
             }
           }, 500);
         }
@@ -1485,13 +1523,25 @@
 
     // Handle successful Simli start
     function handleSimliStarted() {
-      simliStartBtn.classList.add('hidden');
+      simliIsRunning = true;
+      simliControlBtn.classList.add('active');
+      simliControlLabel.textContent = 'Stop';
       avatarLabel.textContent = 'Connecting to Kurt...';
 
       // After a delay, update label to indicate ready
       setTimeout(() => {
-        avatarLabel.textContent = 'Speak to Kurt...';
+        if (simliIsRunning) {
+          avatarLabel.textContent = 'Speak to Kurt...';
+        }
       }, 3000);
+    }
+
+    // Handle Simli stop
+    function handleSimliStopped() {
+      simliIsRunning = false;
+      simliControlBtn.classList.remove('active');
+      simliControlLabel.textContent = 'Start';
+      avatarLabel.textContent = 'Click asterisk to talk with Kurt';
     }
 
     // ========== SCROLL TRACKING ==========
