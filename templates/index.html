@@ -351,6 +351,26 @@
       display: none;
     }
 
+    /* Loading message shown while Simli connects */
+    .simli-loading-msg {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      z-index: 5;
+      font-family: 'Caveat', cursive;
+      font-size: 1.1rem;
+      color: var(--cream);
+      text-align: center;
+      padding: 1rem;
+      opacity: 0;
+      transition: opacity 0.3s;
+    }
+
+    .simli-loading-msg.visible {
+      opacity: 1;
+    }
+
     /*
      * Position widget so face is centered in the circle
      * Widget renders at ~400x400, we offset to show just the face area
@@ -904,6 +924,10 @@
               src="/static/vonnegut_asterisk.gif"
               alt="Loading..."
             />
+            <!-- Loading message shown while connecting -->
+            <div class="simli-loading-msg" id="simliLoadingMsg">
+              Kurt is coming<br/>to his senses...
+            </div>
           </div>
           <button class="simli-control-btn" id="simliControlBtn">
             <span class="simli-control-label" id="simliControlLabel">Start</span>
@@ -986,6 +1010,7 @@
     const simliWrapper = document.getElementById('simliWrapper');
     const simliWidgetContainer = document.getElementById('simliWidgetContainer');
     const simliPlaceholder = document.getElementById('simliPlaceholder');
+    const simliLoadingMsg = document.getElementById('simliLoadingMsg');
     const simliControlBtn = document.getElementById('simliControlBtn');
     const simliControlLabel = document.getElementById('simliControlLabel');
 
@@ -1539,13 +1564,15 @@
       simliIsRunning = true;
       simliControlBtn.classList.add('active');
       simliControlLabel.textContent = 'Stop';
-      avatarLabel.textContent = 'Connecting to Kurt...';
+      avatarLabel.textContent = 'Connecting...';
 
-      // Hide placeholder gif so Simli avatar shows through
+      // Hide placeholder gif, show loading message
       simliPlaceholder.classList.add('hidden');
+      simliLoadingMsg.classList.add('visible');
 
-      // After a delay, update label to indicate ready
+      // After a delay, hide loading message (Simli should be visible by then)
       setTimeout(() => {
+        simliLoadingMsg.classList.remove('visible');
         if (simliIsRunning) {
           avatarLabel.textContent = 'Speak to Kurt...';
         }
@@ -1559,7 +1586,8 @@
       simliControlLabel.textContent = 'Start';
       avatarLabel.textContent = 'Click to talk with Kurt';
 
-      // Show placeholder gif again
+      // Hide loading message, show placeholder gif again
+      simliLoadingMsg.classList.remove('visible');
       simliPlaceholder.classList.remove('hidden');
     }
 
