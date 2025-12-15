@@ -357,7 +357,7 @@
       top: 50%;
       left: 50%;
       transform: translate(-50%, -50%);
-      z-index: 5;
+      z-index: 2; /* Above Simli (1) but below placeholder (10) */
       font-family: 'Caveat', cursive;
       font-size: 1.1rem;
       color: var(--cream);
@@ -365,6 +365,7 @@
       padding: 1rem;
       opacity: 0;
       transition: opacity 0.3s;
+      pointer-events: none;
     }
 
     .simli-loading-msg.visible {
@@ -378,10 +379,10 @@
     #simliWidgetContainer simli-widget {
       display: block;
       position: absolute;
-      /* These values may need adjustment based on widget's actual rendering */
       top: 50%;
       left: 50%;
       transform: translate(-50%, -50%);
+      z-index: 1; /* Base layer for Simli */
     }
 
     /*
