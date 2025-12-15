@@ -335,6 +335,21 @@
       justify-content: center;
     }
 
+    /* Placeholder video (asterisk) shown before Simli loads */
+    #simliPlaceholderVideo {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      position: absolute;
+      top: 0;
+      left: 0;
+      z-index: 1;
+    }
+
+    #simliPlaceholderVideo.hidden {
+      display: none;
+    }
+
     /*
      * Position widget so face is centered in the circle
      * Widget renders at ~400x400, we offset to show just the face area
@@ -349,50 +364,40 @@
     }
 
     /*
-     * Asterisk button - video with Start/Stop label
+     * Control button - simple text button for Start/Stop
      */
     .simli-control-btn {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 0.3rem;
-      cursor: pointer;
-      margin-top: 0.5rem;
-      background: none;
+      font-family: 'Special Elite', monospace;
+      font-size: 0.8rem;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      padding: 0.5rem 1.2rem;
+      background: var(--ink);
+      color: var(--cream);
       border: none;
-      padding: 0;
+      border-radius: 2px;
+      cursor: pointer;
+      transition: all 0.2s;
+      margin-top: 0.5rem;
     }
 
-    .simli-control-btn:hover .asterisk-video {
-      transform: scale(1.1);
+    .simli-control-btn:hover {
+      background: var(--rust);
+      transform: translateY(-1px);
     }
 
     .simli-control-btn:disabled {
       opacity: 0.5;
       cursor: not-allowed;
-    }
-
-    .simli-control-btn:disabled .asterisk-video {
       transform: none;
     }
 
-    .asterisk-video {
-      width: 50px;
-      height: 50px;
-      object-fit: contain;
-      transition: transform 0.2s;
+    .simli-control-btn.active {
+      background: var(--rust);
     }
 
-    .simli-control-label {
-      font-family: 'Special Elite', monospace;
-      font-size: 0.7rem;
-      text-transform: uppercase;
-      letter-spacing: 0.1em;
-      color: var(--pencil);
-    }
-
-    .simli-control-btn.active .simli-control-label {
-      color: var(--rust);
+    .simli-control-btn.active:hover {
+      background: var(--ink);
     }
 
     /* Breathing animation behind avatar - only when no video playing */
@@ -889,11 +894,20 @@
           </div>
         </div>
 
-        <!-- TALK MODE: Simli widget constrained to circle with asterisk control button -->
+        <!-- TALK MODE: Simli widget constrained to circle with control button -->
         <div class="simli-wrapper" id="simliWrapper">
-          <div id="simliWidgetContainer"></div>
+          <div id="simliWidgetContainer">
+            <!-- Placeholder video shown until Simli avatar loads -->
+            <video
+              id="simliPlaceholderVideo"
+              src="/static/vonnegut_asterisk.mp4"
+              autoplay
+              loop
+              muted
+              playsinline
+            ></video>
+          </div>
           <button class="simli-control-btn" id="simliControlBtn">
-            <video class="asterisk-video" src="/static/vonnegut_asterisk.mp4" autoplay loop muted playsinline></video>
             <span class="simli-control-label" id="simliControlLabel">Start</span>
           </button>
         </div>
@@ -973,6 +987,7 @@
     const idleWrapper = document.getElementById('idleWrapper');
     const simliWrapper = document.getElementById('simliWrapper');
     const simliWidgetContainer = document.getElementById('simliWidgetContainer');
+    const simliPlaceholderVideo = document.getElementById('simliPlaceholderVideo');
     const simliControlBtn = document.getElementById('simliControlBtn');
     const simliControlLabel = document.getElementById('simliControlLabel');
 
@@ -1428,7 +1443,7 @@
         simliWidgetContainer.appendChild(simliWidget);
 
         simliInitialized = true;
-        avatarLabel.textContent = 'Click asterisk to talk with Kurt';
+        avatarLabel.textContent = 'Click to talk with Kurt';
         simliControlLabel.textContent = 'Start';
         simliControlBtn.disabled = false;
         console.log('Simli widget initialized');
@@ -1528,6 +1543,9 @@
       simliControlLabel.textContent = 'Stop';
       avatarLabel.textContent = 'Connecting to Kurt...';
 
+      // Hide placeholder video so Simli avatar shows through
+      simliPlaceholderVideo.classList.add('hidden');
+
       // After a delay, update label to indicate ready
       setTimeout(() => {
         if (simliIsRunning) {
@@ -1541,7 +1559,10 @@
       simliIsRunning = false;
       simliControlBtn.classList.remove('active');
       simliControlLabel.textContent = 'Start';
-      avatarLabel.textContent = 'Click asterisk to talk with Kurt';
+      avatarLabel.textContent = 'Click to talk with Kurt';
+
+      // Show placeholder video again
+      simliPlaceholderVideo.classList.remove('hidden');
     }
 
     // ========== SCROLL TRACKING ==========
