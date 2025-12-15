@@ -335,8 +335,8 @@
       justify-content: center;
     }
 
-    /* Placeholder video shown ON TOP of Simli widget until conversation starts */
-    #simliPlaceholderVideo {
+    /* Placeholder gif shown ON TOP of Simli widget until conversation starts */
+    #simliPlaceholder {
       width: 100%;
       height: 100%;
       object-fit: cover;
@@ -347,7 +347,7 @@
       pointer-events: none; /* Allow clicks to pass through to widget below */
     }
 
-    #simliPlaceholderVideo.hidden {
+    #simliPlaceholder.hidden {
       display: none;
     }
 
@@ -898,15 +898,12 @@
         <!-- TALK MODE: Simli widget constrained to circle with control button -->
         <div class="simli-wrapper" id="simliWrapper">
           <div id="simliWidgetContainer">
-            <!-- Placeholder video shown until Simli avatar loads -->
-            <video
-              id="simliPlaceholderVideo"
-              src="/static/vonnegut_asterisk.mp4"
-              autoplay
-              loop
-              muted
-              playsinline
-            ></video>
+            <!-- Placeholder gif shown until Simli avatar loads -->
+            <img
+              id="simliPlaceholder"
+              src="/static/vonnegut_asterisk.gif"
+              alt="Loading..."
+            />
           </div>
           <button class="simli-control-btn" id="simliControlBtn">
             <span class="simli-control-label" id="simliControlLabel">Start</span>
@@ -988,7 +985,7 @@
     const idleWrapper = document.getElementById('idleWrapper');
     const simliWrapper = document.getElementById('simliWrapper');
     const simliWidgetContainer = document.getElementById('simliWidgetContainer');
-    const simliPlaceholderVideo = document.getElementById('simliPlaceholderVideo');
+    const simliPlaceholder = document.getElementById('simliPlaceholder');
     const simliControlBtn = document.getElementById('simliControlBtn');
     const simliControlLabel = document.getElementById('simliControlLabel');
 
@@ -1437,8 +1434,8 @@
         simliWidget.setAttribute('agentid', tokenData.agentId);
         // Use relative position so it flows in document
         simliWidget.setAttribute('position', 'relative');
-        // Use asterisk gif as placeholder instead of Simli's default green
-        simliWidget.setAttribute('customimage', '/static/vonnegut_asterisk.gif');
+        // Use transparent pixel - our overlay gif will cover until conversation starts
+        simliWidget.setAttribute('customimage', 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7');
 
         // Add to container
         simliWidgetContainer.appendChild(simliWidget);
@@ -1544,8 +1541,8 @@
       simliControlLabel.textContent = 'Stop';
       avatarLabel.textContent = 'Connecting to Kurt...';
 
-      // Hide placeholder video so Simli avatar shows through
-      simliPlaceholderVideo.classList.add('hidden');
+      // Hide placeholder gif so Simli avatar shows through
+      simliPlaceholder.classList.add('hidden');
 
       // After a delay, update label to indicate ready
       setTimeout(() => {
@@ -1562,8 +1559,8 @@
       simliControlLabel.textContent = 'Start';
       avatarLabel.textContent = 'Click to talk with Kurt';
 
-      // Show placeholder video again
-      simliPlaceholderVideo.classList.remove('hidden');
+      // Show placeholder gif again
+      simliPlaceholder.classList.remove('hidden');
     }
 
     // ========== SCROLL TRACKING ==========
