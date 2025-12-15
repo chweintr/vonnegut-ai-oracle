@@ -305,7 +305,7 @@
 
     /*
      * SIMLI WIDGET MODE (Talk mode)
-     * Constrain widget to match the idle video circle size (200x200)
+     * Widget renders at its natural size with beige frame around it
      */
     .simli-wrapper {
       display: none;
@@ -318,11 +318,27 @@
       display: flex;
     }
 
-    /*
-     * Just let Simli widget render - no fancy container
-     */
-    #simliWidgetContainer {
-      max-width: 250px;
+    /* Beige frame around the Simli widget */
+    .simli-frame {
+      background: var(--paper);
+      border: 2px solid var(--pencil);
+      border-radius: 8px;
+      padding: 1rem;
+      box-shadow:
+        2px 2px 0 var(--cream),
+        4px 4px 8px rgba(0,0,0,0.1);
+    }
+
+    /* Let Simli widget render at natural size */
+    .simli-frame simli-widget {
+      display: block;
+    }
+
+    .simli-instruction {
+      font-family: 'Caveat', cursive;
+      font-size: 1rem;
+      color: var(--pencil);
+      text-align: center;
     }
 
     /* Breathing animation behind avatar - only when no video playing */
@@ -819,9 +835,13 @@
           </div>
         </div>
 
-        <!-- TALK MODE: Simli widget renders naturally -->
+        <!-- TALK MODE: Simli widget with beige frame -->
         <div class="simli-wrapper" id="simliWrapper">
-          <div id="simliWidgetContainer"></div>
+          <div class="simli-frame">
+            <!-- Simli widget will be inserted here -->
+            <div id="simliWidgetContainer"></div>
+          </div>
+          <span class="simli-instruction">Click the Start button to talk with Kurt</span>
         </div>
 
         <span class="avatar-label" id="avatarLabel">Kurt is listening...</span>
@@ -1320,7 +1340,7 @@
       }
     });
 
-    // Initialize Simli widget - keep it simple, let Simli handle its own UI
+    // Initialize Simli widget
     async function initSimliWidget() {
       try {
         avatarLabel.textContent = 'Loading voice mode...';
@@ -1336,11 +1356,16 @@
         console.log('Got Simli token, creating widget with agentId:', tokenData.agentId);
 
         // Create the Simli widget element
+        // Only token and agentid are required - faceId is configured in the agent on Simli dashboard
         simliWidget = document.createElement('simli-widget');
         simliWidget.setAttribute('token', tokenData.token);
         simliWidget.setAttribute('agentid', tokenData.agentId);
+        // Use relative position so it flows in document
+        simliWidget.setAttribute('position', 'relative');
+        // Replace dotted face with a black placeholder (data URI for 1x1 black pixel)
+        simliWidget.setAttribute('customimage', 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==');
 
-        // Add to container - let Simli render its own Start button and video
+        // Add to container
         simliWidgetContainer.appendChild(simliWidget);
 
         simliInitialized = true;
