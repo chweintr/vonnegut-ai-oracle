@@ -1463,6 +1463,10 @@
         // Add to container
         simliWidgetContainer.appendChild(simliWidget);
 
+        // Debug: log the widget element
+        console.log('Simli widget element:', simliWidget);
+        console.log('Simli widget container children:', simliWidgetContainer.children);
+
         simliInitialized = true;
         avatarLabel.textContent = 'Click to talk with Kurt';
         simliControlLabel.textContent = 'Start';
@@ -1484,10 +1488,19 @@
     function findAndClickSimliButton() {
       // Try shadow DOM first
       if (simliWidget && simliWidget.shadowRoot) {
+        console.log('Shadow root contents:', simliWidget.shadowRoot.innerHTML.substring(0, 500));
         const shadowBtn = simliWidget.shadowRoot.querySelector('button');
         if (shadowBtn) {
           console.log('Found button in shadow DOM:', shadowBtn.textContent || shadowBtn);
           shadowBtn.click();
+          // Check for video after a delay
+          setTimeout(() => {
+            const video = simliWidget.shadowRoot.querySelector('video');
+            console.log('Video element in shadow DOM:', video);
+            if (video) {
+              console.log('Video src:', video.src, 'readyState:', video.readyState);
+            }
+          }, 2000);
           return true;
         }
       }
