@@ -1398,7 +1398,8 @@
         // Use relative position so it flows in document
         simliWidget.setAttribute('position', 'relative');
         // Replace dotted face with a black placeholder (data URI for 1x1 black pixel)
-        simliWidget.setAttribute('customimage', 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==');
+        // Use asterisk gif as placeholder instead of Simli's green dotted face
+        simliWidget.setAttribute('customimage', '/static/vonnegut_asterisk.gif');
 
         // Add to container
         simliWidgetContainer.appendChild(simliWidget);
