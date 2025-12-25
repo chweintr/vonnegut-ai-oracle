@@ -96,6 +96,57 @@ Vonnegut was a prolific doodler. The bot occasionally responds with simple line 
 - `app.py:check_for_doodle()` checks messages against triggers
 - Frontend renders doodles with optional captions and K.V.*bot signature
 
+### TODO: Improve Doodle Invocation
+Current issue: Doodles only trigger 10-20% of the time even when keywords match.
+
+**Options to fix:**
+1. Direct requests = 100% chance: "draw me a bird" → always returns bird doodle
+2. Add "draw" command: "draw [anything]" always returns relevant or random doodle
+3. Let LLM decide: Instead of keyword matching, let GPT decide when/which doodle
+
+**Potential new doodles to add:**
+- Asshole asterisk (famous from Breakfast of Champions)
+- Story shapes (man-in-a-hole curve from his lectures)
+- Kilgore Trout portrait
+- American flag (sketchy, ironic)
+- Dollar sign
+- "Everything was beautiful and nothing hurt" tombstone (alternate to gravestone)
+
+---
+
+## TODO: Reading Context in Talk Mode
+
+**Current state:**
+- Text mode: `getCurrentContext()` already sends highlighted passage with each chat message ✓
+- Talk mode: LiveKit agent does NOT receive reading context yet
+
+**What needs to happen:**
+1. When user joins LiveKit room, send current `visible_text` as room metadata or data message
+2. As user scrolls, send updated context via LiveKit data channel
+3. `vonnebot_agent.py` receives context and incorporates into LLM prompts
+4. Agent responds with awareness of what user is reading
+
+**Implementation approach:**
+- Use `room.localParticipant.publishData()` to send reading context
+- Agent listens for data messages and updates its context
+- Alternatively: Store context in room metadata when creating token
+
+---
+
+## Session Notes (2024-12-25)
+
+### Simli Widget Status
+- Proxy Start button approach restored (commit b5f6991)
+- Green placeholder being replaced with asterisk gif (commit 726b1f4)
+- Widget connects but may have mic issues in noisy environments
+- For demos: Text mode is reliable; Talk mode is "beta"
+
+### Railway Deployment
+- Auto-deploy from GitHub was delayed (17+ hours)
+- Force redeploy by pushing any commit
+- Check Railway Activity tab for deployment status
+- Always hard-refresh browser after deploy (Cmd+Shift+R)
+
 ---
 
 ## Interface Design
