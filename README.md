@@ -1,4 +1,54 @@
 # Vonnebot
+"A reader's desk that talks back in Vonnegut's voice."
+
+## Vision
+Vonnebot is a reading companion for people who want to feel a writer's mind at work, not just skim plot summaries. You read Vonnegut, and it reads with you, answering questions in a voice shaped by his essays, interviews, and fiction. The goal is intimacy with the text, not automation of analysis.
+
+It exists because most study guides flatten literature into bullet points. Vonnegut's writing is personal, moral, funny, and a little dangerous; it deserves a guide that can meet that energy. Vonnebot makes the act of reading interactive and reflective, so your own interpretation is the center of gravity.
+
+What makes it different is the grounding: replies are anchored in Vonnegut's actual words and a Socratic posture that keeps turning the question back toward you. It's less "AI summary," more "workshop conversation."
+
+## Platform Context
+Vonnebot is the first "Vonneguides" experiment: a pattern for building author-specific reading companions that honor voice, context, and craft. The long-term vision is a small family of guides for other authors and classrooms, all using the same grounded retrieval + tutoring pipeline.
+
+## Categories / Organization
+| Category | What It Covers | Who It's For |
+| --- | --- | --- |
+| Reading Experience | The split-pane reader, highlights, and context capture | Anyone actively reading a text |
+| Companion Voice | Vonnegut persona, tone, and Socratic questioning | Readers who want dialogue, not answers |
+| Grounded Sources | Corpus excerpts, interviews, essays, citations | Students, educators, researchers |
+| Modes | Text chat now; voice/avatar later | Readers who prefer conversation |
+
+## Current State
+| Area | Status | Notes |
+| --- | --- | --- |
+| Split-pane reading + chat | ✅ Active | Reads what you're reading in real time |
+| Grounded RAG answers | ✅ Active | Uses corpus excerpts to steer responses |
+| Persona + Socratic flow | ✅ Active | Questions are part of the answer |
+| Voice avatar | 📋 Planned | LiveKit/Simli integration in progress |
+| Persistent learner profiles | 📋 Planned | Session-first today |
+
+## Roadmap / Planned
+- Voice-first mode with the Vonnegut avatar
+- Richer learner profiles (discipline, region, reading goals)
+- Ambient context capture (no highlight required)
+- Multi-author "Vonneguides" expansion
+
+## How It Works
+1. You load a text and start reading.
+2. The reader captures the passage you're focused on.
+3. You ask a question or click a prompt.
+4. The system pulls relevant Vonnegut sources and responds in character.
+5. The reply invites you to interpret, connect, or disagree.
+
+## Aesthetic / Vibe
+Wry, humane, and slightly irreverent. It should feel like a paper-laden desk, a late-night workshop, and a friend who reads with a pencil in hand. The tone is curious and direct, with a dry wit that keeps the conversation honest.
+
+---
+# Technical Documentation
+---
+
+## Vonnebot
 
 **A Kurt Vonnegut Inspired Reading Companion**
 
